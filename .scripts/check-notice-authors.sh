@@ -25,9 +25,9 @@ exit_code=0
 # Call with an ancestor whereas all commits newer than the ancestor are checked.
 base="$1"
 if [ -z "$base" ]; then
-    commits="$(git rev-list --reverse HEAD)"
+    commits="$(git rev-list --no-merges --reverse HEAD)"
 else
-    commits="$(git rev-list --reverse $base..HEAD)"
+    commits="$(git rev-list --no-merges --reverse $base..HEAD)"
 fi
 
 # Authors found in commits and NOTICE.
