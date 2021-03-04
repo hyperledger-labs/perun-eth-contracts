@@ -79,7 +79,7 @@ contract Adjudicator {
         Channel.Params memory params,
         Channel.State memory state,
         bytes[] memory sigs)
-    public
+    external
     {
         requireValidParams(params, state);
         Channel.validateSignatures(params, state, sigs);
@@ -116,7 +116,7 @@ contract Adjudicator {
         Channel.State memory state,
         uint256 actorIdx,
         bytes memory sig)
-    public
+    external
     {
         Dispute memory dispute = requireGetDispute(state.channelID);
         if(dispute.phase == uint8(DisputePhase.DISPUTE)) {
@@ -159,7 +159,7 @@ contract Adjudicator {
         Channel.Params memory params,
         Channel.State memory state,
         Channel.State[] memory subStates)
-    public
+    external
     {
         Dispute memory dispute = requireGetDispute(state.channelID);
         require(dispute.phase != uint8(DisputePhase.CONCLUDED), "channel already concluded");
@@ -185,7 +185,7 @@ contract Adjudicator {
         Channel.Params memory params,
         Channel.State memory state,
         bytes[] memory sigs)
-    public
+    external
     {
         require(state.isFinal == true, "state not final");
         require(state.outcome.locked.length == 0, "cannot have sub-channels");

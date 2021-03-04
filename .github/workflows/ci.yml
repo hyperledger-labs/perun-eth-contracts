@@ -1,0 +1,46 @@
+name: Solidity
+
+on: [push, pull_request]
+
+jobs:
+  check-copyright:
+    name: Copyright
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: License header
+        run: .scripts/check-copyright-notice.sh
+      - name: Authors
+        run: .scripts/check-notice-authors.sh origin/master
+
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Install npm
+        uses: actions/setup-node@v1
+
+      - name: Install dependencies
+        run: |
+          yarn add --dev truffle@5.1.46 typescript solhint
+          yarn
+
+      - name: Lint
+        run: npx solhint 'contracts/**/*.sol'
+
+      - name: Build
+        run: yarn build
+
+      - name: Test
+        run: yarn test
+
+      - name: Test coverage
+        run: npx truffle run coverage
