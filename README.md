@@ -43,17 +43,16 @@ It is assumed to revert if any app-specific check fails.
 
 ## Testing
 The repository must be cloned recursively including [submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
-[Yarn](https://yarnpkg.com), [Typescript](https://www.typescriptlang.org), and [Truffle](https://truffleframework.com/) are expected to be installed globally.
+[Yarn](https://yarnpkg.com) is expected to be installed globally.
 To run the tests, run
 ```sh
 $ yarn
 $ yarn build
 $ yarn test
 ```
-This has been tested with Truffle version `5.1.46`.
 
 ## Copyright
-Copyright 2020 - See [NOTICE](NOTICE) file for copyright holders.
+Copyright 2021 - See [NOTICE](NOTICE) file for copyright holders.
 Use of the source code is governed by the Apache 2.0 license that can be found in the [LICENSE file](LICENSE).
 
 Contact us at [info@perun.network](mailto:info@perun.network).

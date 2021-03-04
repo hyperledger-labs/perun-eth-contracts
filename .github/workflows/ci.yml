@@ -29,9 +29,7 @@ jobs:
         uses: actions/setup-node@v1
 
       - name: Install dependencies
-        run: |
-          yarn add --dev truffle@5.1.46 typescript solhint
-          yarn
+        run: yarn
 
       - name: Lint
         run: npx solhint 'contracts/**/*.sol'
