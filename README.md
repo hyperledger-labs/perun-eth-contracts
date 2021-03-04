@@ -4,6 +4,12 @@
 
 <h4 align="center">Perun State Channels Framework - Ethereum Backend Smart Contracts</h4>
 
+<p align="center">
+  <a href="https://codecov.io/gh/hyperledger-labs/perun-eth-contracts"><img src="https://codecov.io/gh/hyperledger-labs/perun-eth-contracts/branch/master/graph/badge.svg?token=QXZH8MKQG5" alt="Codecov"></a>
+  <a href="https://www.apache.org/licenses/LICENSE-2.0.txt"><img src="https://img.shields.io/badge/license-Apache%202-blue" alt="License: Apache 2.0"></a>
+  <a href="https://github.com/hyperledger-labs/perun-eth-contracts/actions/workflows/ci.yml"><img src="https://github.com/hyperledger-labs/perun-eth-contracts/actions/workflows/ci.yml/badge.svg" alt="Pipeline status"></a>
+</p>
+
 This repository contains the Ethereum smart contracts for [go-perun](https://github.com/perun-network/go-perun)'s Ethereum backend.
 
 ## Security Disclaimer
