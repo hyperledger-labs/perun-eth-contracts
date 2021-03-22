@@ -29,9 +29,7 @@ jobs:
         uses: actions/setup-node@v1
 
       - name: Install dependencies
-        run: |
-          yarn add --dev truffle@5.1.46 typescript solhint
-          yarn
+        run: yarn
 
       - name: Lint
         run: npx solhint 'contracts/**/*.sol'
@@ -44,3 +42,32 @@ jobs:
 
       - name: Test coverage
         run: npx truffle run coverage
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v1
+        with:
+          fail_ci_if_error: true # optional (default = false)
+          verbose: true # optional (default = false)
+
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Install python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies
+        run: |
+          pip3 install solc-select slither-analyzer
+          solc-select install 0.7.4
+          solc-select use 0.7.4
+
+      - name: Slither Analyzer
+        run: slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .

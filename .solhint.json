@@ -1,8 +1,18 @@
 {
-  "extends": ["solhint:recommended"],
+  "extends": [
+    "solhint:recommended"
+  ],
   "rules": {
-    "func-order": "warn",
     "mark-callable-contracts": "off",
-    "compiler-version": ["error","^0.7.0"]
+    "func-visibility": [
+      "warn",
+      {
+        "ignoreConstructors": true
+      }
+    ],
+    "compiler-version": [
+      "error",
+      "^0.7.0"
+    ]
   }
 }

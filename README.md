@@ -4,6 +4,12 @@
 
 <h4 align="center">Perun State Channels Framework - Ethereum Backend Smart Contracts</h4>
 
+<p align="center">
+  <a href="https://codecov.io/gh/hyperledger-labs/perun-eth-contracts"><img src="https://codecov.io/gh/hyperledger-labs/perun-eth-contracts/branch/master/graph/badge.svg?token=QXZH8MKQG5" alt="Codecov"></a>
+  <a href="https://www.apache.org/licenses/LICENSE-2.0.txt"><img src="https://img.shields.io/badge/license-Apache%202-blue" alt="License: Apache 2.0"></a>
+  <a href="https://github.com/hyperledger-labs/perun-eth-contracts/actions/workflows/ci.yml"><img src="https://github.com/hyperledger-labs/perun-eth-contracts/actions/workflows/ci.yml/badge.svg" alt="Pipeline status"></a>
+</p>
+
 This repository contains the Ethereum smart contracts for [go-perun](https://github.com/perun-network/go-perun)'s Ethereum backend.
 
 ## Security Disclaimer
@@ -43,17 +49,16 @@ It is assumed to revert if any app-specific check fails.
 
 ## Testing
 The repository must be cloned recursively including [submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
-[Yarn](https://yarnpkg.com), [Typescript](https://www.typescriptlang.org), and [Truffle](https://truffleframework.com/) are expected to be installed globally.
+[Yarn](https://yarnpkg.com) is expected to be installed globally.
 To run the tests, run
 ```sh
 $ yarn
 $ yarn build
 $ yarn test
 ```
-This has been tested with Truffle version `5.1.46`.
 
 ## Copyright
-Copyright 2020 - See [NOTICE](NOTICE) file for copyright holders.
+Copyright 2021 - See [NOTICE](NOTICE) file for copyright holders.
 Use of the source code is governed by the Apache 2.0 license that can be found in the [LICENSE file](LICENSE).
 
 Contact us at [info@perun.network](mailto:info@perun.network).
