@@ -101,26 +101,26 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
     it("wrong parts length", async () => {
       const wrongParts = [setup.parts[setup.A]]
       await truffleAssert.reverts(
-        setup.ah.setOutcome(setup.channelID, wrongParts, finalBalance, { from: setup.adj }),
+        setup.ah.setOutcome(setup.channelID, wrongParts, finalBalance, false, { from: setup.adj }),
       );
     });
 
     it("wrong balances length", async () => {
       const wrongBals = [ether(1)]
       await truffleAssert.reverts(
-        setup.ah.setOutcome(setup.channelID, setup.parts, wrongBals, { from: setup.adj }),
+        setup.ah.setOutcome(setup.channelID, setup.parts, wrongBals, false, { from: setup.adj }),
       );
     });
     
     it("wrong sender", async () => {
       await truffleAssert.reverts(
-        setup.ah.setOutcome(setup.channelID, setup.parts, finalBalance, { from: setup.txSender }),
+        setup.ah.setOutcome(setup.channelID, setup.parts, finalBalance, false, { from: setup.txSender }),
       );
     });
 
     it("correct sender", async () => {
       truffleAssert.eventEmitted(
-        await setup.ah.setOutcome(setup.channelID, setup.parts, finalBalance, { from: setup.adj }),
+        await setup.ah.setOutcome(setup.channelID, setup.parts, finalBalance, false, { from: setup.adj }),
         'OutcomeSet',
         (ev: any) => { return ev.channelID == setup.channelID }
       );
@@ -133,7 +133,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
 
     it("correct sender (twice)", async () => {
       await truffleAssert.reverts(
-        setup.ah.setOutcome(setup.channelID, setup.parts, finalBalance, { from: setup.adj })
+        setup.ah.setOutcome(setup.channelID, setup.parts, finalBalance, false, { from: setup.adj })
       );
     });
   })
@@ -187,7 +187,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
     it("set outcome of the asset holder with deposit refusal", async () => {
       assert(await setup.ah.settled.call(channelID) == false);
       truffleAssert.eventEmitted(
-        await setup.ah.setOutcome(channelID, setup.parts, finalBalance, { from: setup.adj }),
+        await setup.ah.setOutcome(channelID, setup.parts, finalBalance, false, { from: setup.adj }),
         'OutcomeSet',
         (ev: any) => { return ev.channelID == channelID; }
       );
