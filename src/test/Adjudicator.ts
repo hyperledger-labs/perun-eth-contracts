@@ -191,6 +191,8 @@ contract("Adjudicator", async (accounts) => {
     initialDeposit(B);
   });
 
+  //TODO test deposit recovery
+
   describeWithBlockRevert("register and refute", () => {
     const testsRegister = [
       {
