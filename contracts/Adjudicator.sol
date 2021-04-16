@@ -209,7 +209,7 @@ contract Adjudicator {
      * @param params The parameters of the channel.
      * @return The ID of the channel.
      */
-    function channelID(Channel.Params memory params) public pure returns (bytes32) {
+    function calcChannelID(Channel.Params memory params) public pure returns (bytes32) {
         return keccak256(Channel.encodeParams(params));
     }
 
@@ -231,7 +231,7 @@ contract Adjudicator {
         Channel.Params memory params,
         Channel.State memory state)
     internal pure {
-        require(state.channelID == channelID(params), "invalid params");
+        require(state.channelID == calcChannelID(params), "invalid params");
     }
 
     /**
@@ -453,8 +453,8 @@ contract Adjudicator {
      * @dev Returns the dispute state for the given channelID. The second return
      * value indicates whether the given channel has been registered yet.
      */
-    function getDispute(bytes32 _channelID) internal view returns (Dispute memory, bool) {
-        Dispute memory dispute = disputes[_channelID];
+    function getDispute(bytes32 channelID) internal view returns (Dispute memory, bool) {
+        Dispute memory dispute = disputes[channelID];
         return (dispute, dispute.stateHash != bytes32(0));
     }
 
@@ -462,8 +462,8 @@ contract Adjudicator {
      * @dev Returns the dispute state for the given channelID. Reverts if the
      * channel has not been registered yet.
      */
-    function requireGetDispute(bytes32 _channelID) internal view returns (Dispute memory) {
-        (Dispute memory dispute, bool registered) = getDispute(_channelID);
+    function requireGetDispute(bytes32 channelID) internal view returns (Dispute memory) {
+        (Dispute memory dispute, bool registered) = getDispute(channelID);
         require(registered, "not registered");
         return dispute;
     }
@@ -472,8 +472,8 @@ contract Adjudicator {
      * @dev Sets the dispute state for the given channelID. Emits event
      * ChannelUpdate.
      */
-    function setDispute(bytes32 _channelID, Dispute memory dispute) internal {
-        disputes[_channelID] = dispute;
-        emit ChannelUpdate(_channelID, dispute.version, dispute.phase, dispute.timeout);
+    function setDispute(bytes32 channelID, Dispute memory dispute) internal {
+        disputes[channelID] = dispute;
+        emit ChannelUpdate(channelID, dispute.version, dispute.phase, dispute.timeout);
     }
 }
