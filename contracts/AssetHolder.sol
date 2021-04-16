@@ -86,33 +86,38 @@ abstract contract AssetHolder {
     function setOutcome(
         bytes32 channelID,
         address[] calldata parts,
-        uint256[] calldata newBals)
+        uint256[] calldata newBals,
+        bool depositRecovery)
     external onlyAdjudicator {
         require(parts.length == newBals.length, "participants length should equal balances"); // solhint-disable-line reason-string
         require(settled[channelID] == false, "trying to set already settled channel"); // solhint-disable-line reason-string
 
-        // The channelID itself might already be funded
-        uint256 sumHeld = holdings[channelID];
-        holdings[channelID] = 0;
-        uint256 sumOutcome = 0;
+        // We only redistribute assets if this is not a deposit recovery.
+        if (depositRecovery ==  false) {
+            // The channelID itself might already be funded
+            uint256 sumHeld = holdings[channelID];
+            holdings[channelID] = 0;
+            uint256 sumOutcome = 0;
 
-        bytes32[] memory fundingIDs = new bytes32[](parts.length);
-        for (uint256 i = 0; i < parts.length; i++) {
-            bytes32 id = calcFundingID(channelID, parts[i]);
-            // Save calculated ids to save gas.
-            fundingIDs[i] = id;
-            // Compute old balances.
-            sumHeld = sumHeld.add(holdings[id]);
-            // Compute new balances.
-            sumOutcome = sumOutcome.add(newBals[i]);
-        }
-
-        // We allow overfunding channels, who overfunds looses their funds.
-        if (sumHeld >= sumOutcome) {
+            bytes32[] memory fundingIDs = new bytes32[](parts.length);
             for (uint256 i = 0; i < parts.length; i++) {
-                holdings[fundingIDs[i]] = newBals[i];
+                bytes32 id = calcFundingID(channelID, parts[i]);
+                // Save calculated ids to save gas.
+                fundingIDs[i] = id;
+                // Compute old balances.
+                sumHeld = sumHeld.add(holdings[id]);
+                // Compute new balances.
+                sumOutcome = sumOutcome.add(newBals[i]);
+            }
+
+            // We allow overfunding channels, who overfunds looses their funds.
+            if (sumHeld >= sumOutcome) {
+                for (uint256 i = 0; i < parts.length; i++) {
+                    holdings[fundingIDs[i]] = newBals[i];
+                }
             }
         }
+
         settled[channelID] = true;
         emit OutcomeSet(channelID);
     }
@@ -130,11 +135,24 @@ abstract contract AssetHolder {
      * Calculated as the hash of the channel id and the participant address.
      * @param amount Amount of money that should be deposited.
      */
-    function deposit(bytes32 fundingID, uint256 amount) external payable {
+    function deposit(bytes32 fundingID, uint256 amount) public payable {
         depositCheck(fundingID, amount);
         holdings[fundingID] = holdings[fundingID].add(amount);
         depositEnact(fundingID, amount);       
         emit Deposited(fundingID, amount);
+    }
+
+    /**
+     * @notice depositChannelParticipant deposits the given amount of assets
+     * at the specified channel for the specified participant.
+     *
+     * @param channelID Channel identifier.
+     * @param participant Channel participant.
+     * @param amount Deposit amount.
+     */
+    function depositChannelParticipant(bytes32 channelID, address participant, uint256 amount) external payable {
+        bytes32 fundingID = calcFundingID(channelID, participant);
+        deposit(fundingID, amount);
     }
 
     /**
