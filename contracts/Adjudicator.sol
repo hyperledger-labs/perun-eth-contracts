@@ -46,6 +46,7 @@ contract Adjudicator {
         uint64 version;
         bool hasApp;
         uint8 phase;
+        bool depositRecovery; // Indicates whether this is a deposit recovery.
         bytes32 stateHash;
     }
 
@@ -87,13 +88,53 @@ contract Adjudicator {
         // If registered, require newer version and refutation timeout not passed.
         (Dispute memory dispute, bool registered) = getDispute(state.channelID);
         if (registered) {
-            require(dispute.version < state.version, "invalid version");
+            // We skip the version check if the previous registration was a deposit recovery.
+            require(dispute.version < state.version || dispute.depositRecovery == true, "invalid version");
             require(dispute.phase == uint8(DisputePhase.DISPUTE), "incorrect phase");
             // solhint-disable-next-line not-rely-on-time
             require(block.timestamp < dispute.timeout, "refutation timeout passed");
         }
 
-        storeChallenge(params, state, DisputePhase.DISPUTE);
+        storeChallenge(params, state, DisputePhase.DISPUTE, false);
+    }
+
+    /**
+     * @notice registerDepositRecovery initiates the recovery of the deposited
+     * funds. It can be used if the channel state is lost.
+     *
+     * @param params The channel parameters.
+     * @param assets The assets to be recovered.
+     * @param sig A signature on the state.
+     * @param partIdx The participant index of the signer.
+     */
+    function registerDepositRecovery(
+        Channel.Params memory params,
+        address[] memory assets,
+        bytes memory sig,
+        uint64 partIdx)
+    external
+    {
+        bytes32 channelID = calcChannelID(params);
+        // We authenticate the caller to protect against griefing.
+        require(Sig.verify(abi.encode(channelID, assets), sig, params.participants[partIdx]), "invalid signature");
+
+        (Dispute memory dispute, bool registered) = getDispute(channelID);
+        if (registered) {
+            require(dispute.depositRecovery == true, "already registered");
+            require(dispute.phase == uint8(DisputePhase.DISPUTE), "wrong phase");
+        }
+
+        storeChallenge(params, Channel.State({
+            channelID: channelID,
+            version: 0,
+            outcome: Channel.Allocation({
+                assets: assets,
+                balances: zeroBalances(assets.length, params.participants.length),
+                locked: new Channel.SubAlloc[](0)
+            }),
+            appData: "",
+            isFinal: false
+        }), DisputePhase.DISPUTE, true);
     }
 
     /**
@@ -119,6 +160,7 @@ contract Adjudicator {
     external
     {
         Dispute memory dispute = requireGetDispute(state.channelID);
+        require(dispute.depositRecovery == false, "deposit recovery"); // We do not allow state progression for deposit recoveries.
         if(dispute.phase == uint8(DisputePhase.DISPUTE)) {
             // solhint-disable-next-line not-rely-on-time
             require(block.timestamp >= dispute.timeout, "timeout not passed");
@@ -136,7 +178,7 @@ contract Adjudicator {
         require(Sig.verify(Channel.encodeState(state), sig, params.participants[actorIdx]), "invalid signature");
         requireValidTransition(params, stateOld, state, actorIdx);
 
-        storeChallenge(params, state, DisputePhase.FORCEEXEC);
+        storeChallenge(params, state, DisputePhase.FORCEEXEC, false);
     }
 
     /**
@@ -166,7 +208,7 @@ contract Adjudicator {
         requireValidParams(params, state);
 
         ensureTreeConcluded(state, subStates);
-        pushOutcome(state, subStates, params.participants);
+        pushOutcome(state, subStates, params.participants, dispute.depositRecovery);
     }
 
     /**
@@ -198,10 +240,10 @@ contract Adjudicator {
             require(dispute.phase != uint8(DisputePhase.CONCLUDED), "channel already concluded");
         }
 
-        storeChallenge(params, state, DisputePhase.CONCLUDED);
+        storeChallenge(params, state, DisputePhase.CONCLUDED, false);
 
         Channel.State[] memory subStates = new Channel.State[](0);
-        pushOutcome(state, subStates, params.participants);
+        pushOutcome(state, subStates, params.participants, false);
     }
 
     /**
@@ -209,7 +251,7 @@ contract Adjudicator {
      * @param params The parameters of the channel.
      * @return The ID of the channel.
      */
-    function channelID(Channel.Params memory params) public pure returns (bytes32) {
+    function calcChannelID(Channel.Params memory params) public pure returns (bytes32) {
         return keccak256(Channel.encodeParams(params));
     }
 
@@ -231,7 +273,7 @@ contract Adjudicator {
         Channel.Params memory params,
         Channel.State memory state)
     internal pure {
-        require(state.channelID == channelID(params), "invalid params");
+        require(state.channelID == calcChannelID(params), "invalid params");
     }
 
     /**
@@ -244,7 +286,8 @@ contract Adjudicator {
     function storeChallenge(
         Channel.Params memory params,
         Channel.State memory state,
-        DisputePhase disputePhase)
+        DisputePhase disputePhase,
+        bool depositRecovery)
     internal
     {
         (Dispute memory dispute, bool registered) = getDispute(state.channelID);
@@ -253,6 +296,7 @@ contract Adjudicator {
         dispute.version = state.version;
         dispute.hasApp = params.app != address(0);
         dispute.phase = uint8(disputePhase);
+        dispute.depositRecovery = depositRecovery;
         dispute.stateHash = hashState(state);
 
         // Compute timeout.
@@ -423,7 +467,8 @@ contract Adjudicator {
     function pushOutcome(
         Channel.State memory state,
         Channel.State[] memory subStates,
-        address[] memory participants)
+        address[] memory participants,
+        bool depositRecovery)
     internal
     {
         address[] memory assets = state.outcome.assets;
@@ -445,7 +490,7 @@ contract Adjudicator {
             }
 
             // push accumulated outcome
-            AssetHolder(assets[a]).setOutcome(state.channelID, participants, outcome);
+            AssetHolder(assets[a]).setOutcome(state.channelID, participants, outcome, depositRecovery);
         }
     }
 
@@ -453,8 +498,8 @@ contract Adjudicator {
      * @dev Returns the dispute state for the given channelID. The second return
      * value indicates whether the given channel has been registered yet.
      */
-    function getDispute(bytes32 _channelID) internal view returns (Dispute memory, bool) {
-        Dispute memory dispute = disputes[_channelID];
+    function getDispute(bytes32 channelID) internal view returns (Dispute memory, bool) {
+        Dispute memory dispute = disputes[channelID];
         return (dispute, dispute.stateHash != bytes32(0));
     }
 
@@ -462,8 +507,8 @@ contract Adjudicator {
      * @dev Returns the dispute state for the given channelID. Reverts if the
      * channel has not been registered yet.
      */
-    function requireGetDispute(bytes32 _channelID) internal view returns (Dispute memory) {
-        (Dispute memory dispute, bool registered) = getDispute(_channelID);
+    function requireGetDispute(bytes32 channelID) internal view returns (Dispute memory) {
+        (Dispute memory dispute, bool registered) = getDispute(channelID);
         require(registered, "not registered");
         return dispute;
     }
@@ -472,8 +517,22 @@ contract Adjudicator {
      * @dev Sets the dispute state for the given channelID. Emits event
      * ChannelUpdate.
      */
-    function setDispute(bytes32 _channelID, Dispute memory dispute) internal {
-        disputes[_channelID] = dispute;
-        emit ChannelUpdate(_channelID, dispute.version, dispute.phase, dispute.timeout);
+    function setDispute(bytes32 channelID, Dispute memory dispute) internal {
+        disputes[channelID] = dispute;
+        emit ChannelUpdate(channelID, dispute.version, dispute.phase, dispute.timeout);
+    }
+
+    /**
+     * @notice zeroBalances creates a zero-balance array with the specified
+     * dimensions.
+     *
+     * @param m The length of the first dimension.
+     * @param m The length of the second dimension.
+     */
+    function zeroBalances(uint m, uint n) internal pure returns (uint256[][] memory balances) {
+        balances = new uint256[][](m);
+        for (uint i = 0; i < m; i++) {
+            balances[i] = new uint256[](n);
+        }
     }
 }
