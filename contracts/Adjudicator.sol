@@ -58,7 +58,7 @@ contract Adjudicator {
      * @notice Indicates that a channel has been updated.
      * @param channelID The identifier of the channel.
      * @param version The version of the channel state.
-     * @param version The dispute phase of the channel.
+     * @param phase The dispute phase of the channel.
      * @param timeout The dispute phase timeout.
      */
     event ChannelUpdate(bytes32 indexed channelID, uint64 version, uint8 phase, uint64 timeout);

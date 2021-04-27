@@ -65,7 +65,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip3 install solc-select slither-analyzer
+          pip3 install solc-select slither-analyzer==0.7.0
           solc-select install 0.7.4
           solc-select use 0.7.4
 

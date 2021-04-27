@@ -157,7 +157,7 @@ abstract contract AssetHolder {
         require(settled[authorization.channelID], "channel not settled");
         require(Sig.verify(abi.encode(authorization), signature, authorization.participant), "signature verification failed");
         bytes32 id = calcFundingID(authorization.channelID, authorization.participant);
-        require(holdings[id] >= authorization.amount, "insufficient ETH for withdrawal");
+        require(holdings[id] >= authorization.amount, "insufficient funds");
         withdrawCheck(authorization, signature);
         holdings[id] = holdings[id].sub(authorization.amount);
         withdrawEnact(authorization, signature);
