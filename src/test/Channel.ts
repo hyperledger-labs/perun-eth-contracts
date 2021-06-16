@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// his file contains the types:
-// DisputePhase, Channel, Params, State, Allocation, SubAlloc, Transaction and
-// Authorization.
-
 import Web3 from "web3";
 declare const web3: Web3;
 import { sign, hash } from "../lib/web3";
@@ -30,6 +26,28 @@ export class Channel {
     this.params = params
     this.state = state
   }
+
+  async signed(): Promise<SignedChannel> {
+    const sigs = await this.state.sign(this.params.participants);
+    return new SignedChannel(this.params, this.state, sigs);
+  }
+}
+
+export class SignedChannel extends Channel {
+  sigs: string[];
+
+  constructor(params: Params, state: State, sigs: string[]) {
+    super(params, state);
+    this.sigs = sigs;
+  }
+
+  serialize() {
+    return {
+      params: this.params.serialize(),
+      state: this.state.serialize(),
+      sigs: this.sigs,
+    };
+  }
 }
 
 export class Params {
@@ -37,12 +55,14 @@ export class Params {
   nonce: string;
   app: string;
   participants: string[];
+  ledgerChannel: boolean;
 
-  constructor(_app: string, _challengeDuration: number, _nonce: string, _parts: string[]) {
-    this.app = _app;
-    this.challengeDuration = _challengeDuration;
-    this.nonce = _nonce;
-    this.participants = _parts;
+  constructor(app: string, challengeDuration: number, nonce: string, parts: string[], ledgerChannel: boolean) {
+    this.app = app;
+    this.challengeDuration = challengeDuration;
+    this.nonce = nonce;
+    this.participants = parts;
+    this.ledgerChannel = ledgerChannel;
   }
 
   serialize() {
@@ -50,7 +70,8 @@ export class Params {
       app: this.app,
       challengeDuration: this.challengeDuration,
       nonce: this.nonce,
-      participants: this.participants
+      participants: this.participants,
+      ledgerChannel: this.ledgerChannel,
     };
   }
 
@@ -68,14 +89,19 @@ export class Params {
           "type": "uint256"
         },
         {
+          "internalType": "address[]",
+          "name": "participants",
+          "type": "address[]"
+        },
+        {
           "internalType": "address",
           "name": "app",
           "type": "address"
         },
         {
-          "internalType": "address[]",
-          "name": "participants",
-          "type": "address[]"
+          "internalType": "bool",
+          "name": "ledgerChannel",
+          "type": "bool"
         }
       ],
       "internalType": "struct Channel.Params",
@@ -151,6 +177,11 @@ export class State {
                   "internalType": "uint256[]",
                   "name": "balances",
                   "type": "uint256[]"
+                },
+                {
+                  "internalType": "uint16[]",
+                  "name": "indexMap",
+                  "type": "uint16[]"
                 }
               ],
               "internalType": "struct Channel.SubAlloc[]",
@@ -210,14 +241,16 @@ export class Allocation {
 export class SubAlloc {
     ID: string;
     balances: string[];
+    indexMap: number[];
 
-    constructor(id: string, _balances: string[]) {
+    constructor(id: string, balances: string[], indexMap: number[]) {
         this.ID = id;
-        this.balances = _balances;
+        this.balances = balances;
+        this.indexMap = indexMap;
     }
 
     serialize() {
-        return { ID: this.ID, balances: this.balances };
+        return { ID: this.ID, balances: this.balances, indexMap: this.indexMap };
     }
 }
 
@@ -225,7 +258,7 @@ export class Transaction extends Channel {
     sigs: string[];
   
     constructor(parts: string[], balances: BN[], challengeDuration: number, nonce: string, asset: string, app: string) {
-      const params = new Params(app, challengeDuration, nonce, [parts[0], parts[1]]);
+      const params = new Params(app, challengeDuration, nonce, [parts[0], parts[1]], true);
       const outcome = new Allocation([asset], [[balances[0].toString(), balances[1].toString()]], []);
       const state = new State(params.channelID(), "0", outcome, "0x00", false);
       super(params, state);
@@ -236,7 +269,7 @@ export class Transaction extends Channel {
       let stateEncoded = this.state.encode();
       this.sigs = await Promise.all(parts.map(participant => sign(stateEncoded, participant)));
     }
-  }
+}
   
 
 export class Authorization {
