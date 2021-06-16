@@ -402,6 +402,7 @@ contract("Adjudicator", async (accounts) => {
 
     function toSubAlloc(state: State): SubAlloc {
       let assetTotals = state.outcome.balances.map(balancesForAsset => balancesForAsset.reduce((acc, val) => acc.add(new BN(val)), new BN('0')));
+      assetTotals = assetTotals.map((t, i) => t.add(state.outcome.locked.reduce((acc, val) => acc.add(new BN(val.balances[i])), new BN('0'))));
       return new SubAlloc(state.channelID, assetTotals.map(assetTotal => assetTotal.toString()))
     }
 
