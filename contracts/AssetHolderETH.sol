@@ -51,6 +51,7 @@ contract AssetHolderETH is AssetHolder {
      * @param authorization Withdrawal Authorization to authorize token transer
      * from a channel participant to an on-chain receiver.
      */
+     //slither-disable-next-line dead-code
     function withdrawEnact(WithdrawalAuth calldata authorization, bytes calldata) internal override {
         authorization.receiver.transfer(authorization.amount);
     }

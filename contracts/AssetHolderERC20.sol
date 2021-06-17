@@ -61,6 +61,7 @@ contract AssetHolderERC20 is AssetHolder {
      * @param authorization Withdrawal Authorization to authorize token transer
      * from a channel participant to an on-chain receiver.
      */
+	 //slither-disable-next-line dead-code
     function withdrawEnact(WithdrawalAuth calldata authorization, bytes calldata) internal override {
 		require(token.transfer(authorization.receiver, authorization.amount), "transfer failed");
 	}

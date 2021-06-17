@@ -475,6 +475,7 @@ contract Adjudicator {
     internal
     {
         for (uint a = 0; a < assets.length; a++) {
+            //slither-disable-next-line calls-loop
             AssetHolder(assets[a]).setOutcome(channel, participants, outcome[a]);
         }
     }
@@ -483,8 +484,8 @@ contract Adjudicator {
      * @dev Returns the dispute state for the given channelID. The second return
      * value indicates whether the given channel has been registered yet.
      */
-    function getDispute(bytes32 _channelID) internal view returns (Dispute memory, bool) {
-        Dispute memory dispute = disputes[_channelID];
+    function getDispute(bytes32 chID) internal view returns (Dispute memory, bool) {
+        Dispute memory dispute = disputes[chID];
         return (dispute, dispute.stateHash != bytes32(0));
     }
 
@@ -492,8 +493,8 @@ contract Adjudicator {
      * @dev Returns the dispute state for the given channelID. Reverts if the
      * channel has not been registered yet.
      */
-    function requireGetDispute(bytes32 _channelID) internal view returns (Dispute memory) {
-        (Dispute memory dispute, bool registered) = getDispute(_channelID);
+    function requireGetDispute(bytes32 chID) internal view returns (Dispute memory) {
+        (Dispute memory dispute, bool registered) = getDispute(chID);
         require(registered, "not registered");
         return dispute;
     }
@@ -502,8 +503,8 @@ contract Adjudicator {
      * @dev Sets the dispute state for the given channelID. Emits event
      * ChannelUpdate.
      */
-    function setDispute(bytes32 _channelID, Dispute memory dispute) internal {
-        disputes[_channelID] = dispute;
-        emit ChannelUpdate(_channelID, dispute.version, dispute.phase, dispute.timeout);
+    function setDispute(bytes32 chID, Dispute memory dispute) internal {
+        disputes[chID] = dispute;
+        emit ChannelUpdate(chID, dispute.version, dispute.phase, dispute.timeout);
     }
 }
