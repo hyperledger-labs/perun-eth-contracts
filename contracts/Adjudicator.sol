@@ -144,6 +144,11 @@ contract Adjudicator {
         requireValidParams(params, state);
         Channel.validateSignatures(params, state, channel.sigs);
 
+        if (params.virtualChannel) {
+            require(!Channel.hasApp(params), "cannot have app");
+            require(state.outcome.locked.length == 0, "cannot have locked funds");
+        }
+
         // If registered, require newer version and refutation timeout not passed.
         (Dispute memory dispute, bool registered) = getDispute(state.channelID);
         if (registered) {
@@ -309,7 +314,7 @@ contract Adjudicator {
         
         dispute.challengeDuration = uint64(params.challengeDuration);
         dispute.version = state.version;
-        dispute.hasApp = params.app != address(0);
+        dispute.hasApp = Channel.hasApp(params);
         dispute.phase = uint8(disputePhase);
         dispute.stateHash = hashState(state);
 

@@ -326,6 +326,36 @@ contract("Adjudicator", async (accounts) => {
     });
   });
 
+  describeWithBlockRevert("virtual channels", () => {
+    itWithBlockRevert("register with app fails", async () => {
+      let tx = new Transaction(parts, balance, timeout, nonce, asset, app);
+      tx.params.virtualChannel = true;
+      tx.state.channelID = tx.params.channelID();
+      await tx.sign(parts);
+      const res = register(tx);
+      await truffleAssert.reverts(res, "cannot have app");
+    });
+
+    itWithBlockRevert("register with locked funds fails", async () => {
+      let tx = new Transaction(parts, balance, timeout, nonce, asset, zeroAddress);
+      tx.params.virtualChannel = true;
+      tx.state.channelID = tx.params.channelID();
+      tx.state.outcome.locked = [new SubAlloc("0x0", [], [])];
+      await tx.sign(parts);
+      const res = register(tx); 
+      await truffleAssert.reverts(res, "cannot have locked funds");
+    });
+
+    itWithBlockRevert("register succeeds", async () => {
+      let tx = new Transaction(parts, balance, timeout, nonce, asset, zeroAddress);
+      tx.params.virtualChannel = true;
+      tx.state.channelID = tx.params.channelID();
+      await tx.sign(parts);
+      const res = register(tx); 
+      await assertRegister(res, tx);
+    });
+  });
+
   describeWithBlockRevert("concludeFinal", () => {
     const testsConcludeFinal = [
       {

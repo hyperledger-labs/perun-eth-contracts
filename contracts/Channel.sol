@@ -27,6 +27,7 @@ library Channel {
         address[] participants;
         address app;
         bool ledgerChannel;
+        bool virtualChannel;
     }
 
     struct State {
@@ -107,4 +108,9 @@ library Channel {
         Array.requireEqualUint256Array(a.balances, b.balances);
         Array.requireEqualUint16Array(a.indexMap, b.indexMap);
     }
+
+    /// @dev Returns whether the channel has an app.
+    function hasApp(Params memory params) internal pure returns (bool) {
+        return params.app != address(0);
+    } 
 }

@@ -56,6 +56,7 @@ export class Params {
   app: string;
   participants: string[];
   ledgerChannel: boolean;
+  virtualChannel: boolean;
 
   constructor(app: string, challengeDuration: number, nonce: string, parts: string[], ledgerChannel: boolean) {
     this.app = app;
@@ -63,6 +64,7 @@ export class Params {
     this.nonce = nonce;
     this.participants = parts;
     this.ledgerChannel = ledgerChannel;
+    this.virtualChannel = false;
   }
 
   serialize() {
@@ -72,6 +74,7 @@ export class Params {
       nonce: this.nonce,
       participants: this.participants,
       ledgerChannel: this.ledgerChannel,
+      virtualChannel: this.virtualChannel,
     };
   }
 
@@ -101,6 +104,11 @@ export class Params {
         {
           "internalType": "bool",
           "name": "ledgerChannel",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "virtualChannel",
           "type": "bool"
         }
       ],
