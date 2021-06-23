@@ -22,6 +22,7 @@ import "./Channel.sol";
 import "./App.sol";
 import "./AssetHolder.sol";
 import "./SafeMath64.sol";
+import "./Array.sol";
 
 /**
  * @title The Perun Adjudicator
@@ -63,36 +64,101 @@ contract Adjudicator {
      */
     event ChannelUpdate(bytes32 indexed channelID, uint64 version, uint8 phase, uint64 timeout);
 
+    // SignedState is a combination of params, state, and signatures.
+    struct SignedState {
+        Channel.Params params;
+        Channel.State state;
+        bytes[] sigs;
+    }
+
     /**
-     * @notice Register registers a non-final state of a channel.
-     * If the call was successful a Registered event is emitted.
-     *
-     * @dev It can only be called if the channel has not been registered yet, or
-     * the refutation timeout has not passed.
-     * The caller has to provide n signatures on the state.
-     *
-     * @param params The parameters of the state channel.
-     * @param state The current state of the state channel.
-     * @param sigs Array of n signatures on the current state.
+     * @notice Register disputes the state of a ledger channel and its sub-channels.
+     * @param channel The ledger channel to be registered.
+     * @param subChannels The sub-channels in depth-first order.
      */
     function register(
-        Channel.Params memory params,
-        Channel.State memory state,
-        bytes[] memory sigs)
+        SignedState memory channel,
+        SignedState[] memory subChannels
+    )
     external
     {
+        require(channel.params.ledgerChannel, "not ledger");
+        registerRecursive(channel, subChannels, 0);
+    }
+
+    /**
+     * @dev registerRecursive registers a dispute for a channel and its sub-channels.
+     * It returns the accumulated outcome of the channel and its sub-channels.
+     * @param startIndex is the index of the first sub-channel of channel in subChannels.
+     * @param nextIndex is the index after the last processed sub-channel in subChannels.
+     * @return outcome The accumulated outcome of the channel and its sub-channels.
+     * @return nextIndex The index of the next sub-channel.
+     */
+    function registerRecursive(
+        SignedState memory channel,
+        SignedState[] memory subChannels,
+        uint startIndex)
+    internal
+    returns (uint256[] memory outcome, uint nextIndex)
+    {
+        nextIndex = startIndex;
+        Channel.Allocation memory alloc = channel.state.outcome;
+        address[] memory assets = alloc.assets;
+
+        // Register the channel and add the balances to outcome.
+        registerSingle(channel);
+        outcome = Array.accumulateUint256ArrayArray(alloc.balances);
+
+        // For each sub-channel, register recursively and check the accumulated
+        // outcome against the locked assets.
+        Channel.SubAlloc[] memory locked = alloc.locked;
+        require(locked.length <= subChannels.length, "subChannels: too short");
+        for (uint s = 0; s < locked.length; s++) {
+            SignedState memory _channel = subChannels[nextIndex++];
+            (Channel.SubAlloc memory subAlloc, Channel.State memory _state) =
+                (locked[s], _channel.state);
+            require(subAlloc.ID == _state.channelID, "invalid sub-channel id");
+
+            uint256[] memory _outcome;
+            (_outcome, nextIndex) = registerRecursive(_channel, subChannels, nextIndex);
+
+            Array.requireEqualAddressArray(assets, _state.outcome.assets);
+            Array.requireEqualUint256Array(subAlloc.balances, _outcome);
+            Array.addInplaceUint256Array(outcome, _outcome);
+        }
+    }
+
+    /**
+     * @dev registerSingle registers a channel dispute if the requirements are met:
+     * (not registered before) or (newer version and within refutation period).
+     * Registration is skipped if the channel state is already registered.
+     */
+    function registerSingle(
+        SignedState memory channel
+    )
+    internal
+    {
+        (Channel.Params memory params, Channel.State memory state) = 
+            (channel.params, channel.state);
+
         requireValidParams(params, state);
-        Channel.validateSignatures(params, state, sigs);
+        Channel.validateSignatures(params, state, channel.sigs);
 
         // If registered, require newer version and refutation timeout not passed.
         (Dispute memory dispute, bool registered) = getDispute(state.channelID);
         if (registered) {
+            if (dispute.stateHash == hashState(state)) {
+                // Skip if same state.
+                // This allows for refutation of related states.
+                return;
+            }
             require(dispute.version < state.version, "invalid version");
             require(dispute.phase == uint8(DisputePhase.DISPUTE), "incorrect phase");
             // solhint-disable-next-line not-rely-on-time
             require(block.timestamp < dispute.timeout, "refutation timeout passed");
         }
 
+        // Write state.
         storeChallenge(params, state, DisputePhase.DISPUTE);
     }
 

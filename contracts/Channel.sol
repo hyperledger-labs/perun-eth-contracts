@@ -23,8 +23,9 @@ library Channel {
     struct Params {
         uint256 challengeDuration;
         uint256 nonce;
-        address app;
         address[] participants;
+        address app;
+        bool ledgerChannel;
     }
 
     struct State {
