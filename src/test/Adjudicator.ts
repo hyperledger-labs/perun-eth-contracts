@@ -22,7 +22,7 @@ import {
   AssetHolderETHContract,
   AssetHolderETHInstance,
 } from "../../types/truffle-contracts";
-import { DisputePhase, Channel, Params, Allocation, SubAlloc, Transaction, State } from "./Channel";
+import { DisputePhase, Channel, SignedChannel, Params, Allocation, SubAlloc, Transaction, State } from "./Channel";
 import { ether, wei2eth, hash } from "../lib/web3";
 import { fundingID, advanceBlockTime, describeWithBlockRevert, itWithBlockRevert } from "../lib/test";
 import BN from "bn.js";
@@ -47,7 +47,7 @@ contract("Adjudicator", async (accounts) => {
   let params: Params;
   let channelID = "";
   const A = 0, B = 1;
-  const dummySubAlloc = new SubAlloc(hash(0), []);
+  const dummySubAlloc = new SubAlloc(hash(0), [], [0, 1]);
 
   function initialDeposit(idx: number) {
     const bal = balance[idx];
@@ -67,24 +67,36 @@ contract("Adjudicator", async (accounts) => {
   }
 
   function register(tx: Transaction): Promise<Truffle.TransactionResponse> {
-    return adjcall(adj.register, tx);
+    const ch = new SignedChannel(tx.params, tx.state, tx.sigs);
+    return adj.register(
+      ch.serialize(),
+      [],
+      { from: accounts[0] },
+    );
   }
 
-  async function registerWithAssertions(channel: Channel) {
+  async function registerChannel(channel: Channel, subChannels: Channel[] = []): Promise<Truffle.TransactionResponse> {
+    return adj.register(
+      (await channel.signed()).serialize(),
+      await Promise.all(subChannels.map(async ch => (await ch.signed()).serialize())),
+      { from: accounts[0] },
+    );
+  }
+
+  async function registerWithAssertions(channel: Channel, subChannels: Channel[]) {
     let res = adj.register(
-      channel.params.serialize(),
-      channel.state.serialize(),
-      await channel.state.sign(channel.params.participants),
+      (await channel.signed()).serialize(),
+      await Promise.all(subChannels.map(async ch => (await ch.signed()).serialize())),
       {from: accounts[0]}
     );
     await assertRegister(res, channel);
   }
 
-  function progress(tx: Transaction, oldState: any, actorIdx: number, sig: string): Promise<Truffle.TransactionResponse> {
+  function progress(ch: Channel, oldState: any, actorIdx: number, sig: string): Promise<Truffle.TransactionResponse> {
     return adj.progress(
-      tx.params.serialize(),
+      ch.params.serialize(),
       oldState,
-      tx.state.serialize(),
+      ch.state.serialize(),
       actorIdx,
       sig,
       { from: accounts[0] },
@@ -183,7 +195,7 @@ contract("Adjudicator", async (accounts) => {
       asset = ah.address;
   
       // app deployed, we can calculate the default parameters and channel id
-      params = new Params(app, timeout, nonce, [parts[A], parts[B]]);
+      params = new Params(app, timeout, nonce, [parts[A], parts[B]], true);
       channelID = params.channelID();
     });
   
@@ -209,14 +221,14 @@ contract("Adjudicator", async (accounts) => {
         shouldRevert: true,
       },
       {
-        prepare: async (tx: Transaction) => { await tx.sign(parts) },
-        desc: "register with valid state succeeds",
-        shouldRevert: false,
+        prepare: async (tx: Transaction) => { tx.params.ledgerChannel = false; await tx.sign([parts[0], parts[0]]) },
+        desc: "register non-ledger channel fails",
+        shouldRevert: true,
       },
       {
         prepare: async (tx: Transaction) => { await tx.sign(parts) },
-        desc: "register with validState twice fails",
-        shouldRevert: true,
+        desc: "register with valid state succeeds",
+        shouldRevert: false,
       },
     ]
 
@@ -234,6 +246,14 @@ contract("Adjudicator", async (accounts) => {
       })
     });
 
+    it("register with validState twice does not revert", async () => {
+      let tx = new Transaction(parts, balance, timeout, nonce, asset, app);
+      tx.state.version = "2";
+      await tx.sign(parts);
+      let res = register(tx);
+      await truffleAssert.passes(res);
+    });
+
     const testsRefute = [
       {
         prepare: async (tx: Transaction) => { tx.state.channelID = hash("wrongChannelID"); await tx.sign(parts) },
@@ -241,7 +261,7 @@ contract("Adjudicator", async (accounts) => {
         shouldRevert: true,
       },
       {
-        prepare: async (tx: Transaction) => { tx.state.version = "2"; await tx.sign(parts) },
+        prepare: async (tx: Transaction) => { tx.state.version = "1"; await tx.sign(parts) },
         desc: "refuting with old state fails",
         shouldRevert: true,
       },
@@ -254,11 +274,6 @@ contract("Adjudicator", async (accounts) => {
         prepare: async (tx: Transaction) => { await tx.sign(parts) },
         desc: "refuting with validState succeeds",
         shouldRevert: false,
-      },
-      {
-        prepare: async (tx: Transaction) => { await tx.sign(parts) },
-        desc: "refuting with validState twice fails",
-        shouldRevert: true,
       },
       {
         prepare: async (tx: Transaction) => { tx.state.version = "5"; await tx.sign(parts) },
@@ -311,11 +326,46 @@ contract("Adjudicator", async (accounts) => {
     });
   });
 
+  describeWithBlockRevert("virtual channels", () => {
+    itWithBlockRevert("register with app fails", async () => {
+      let tx = new Transaction(parts, balance, timeout, nonce, asset, app);
+      tx.params.virtualChannel = true;
+      tx.state.channelID = tx.params.channelID();
+      await tx.sign(parts);
+      const res = register(tx);
+      await truffleAssert.reverts(res, "cannot have app");
+    });
+
+    itWithBlockRevert("register with locked funds fails", async () => {
+      let tx = new Transaction(parts, balance, timeout, nonce, asset, zeroAddress);
+      tx.params.virtualChannel = true;
+      tx.state.channelID = tx.params.channelID();
+      tx.state.outcome.locked = [new SubAlloc("0x0", [], [])];
+      await tx.sign(parts);
+      const res = register(tx); 
+      await truffleAssert.reverts(res, "cannot have locked funds");
+    });
+
+    itWithBlockRevert("register succeeds", async () => {
+      let tx = new Transaction(parts, balance, timeout, nonce, asset, zeroAddress);
+      tx.params.virtualChannel = true;
+      tx.state.channelID = tx.params.channelID();
+      await tx.sign(parts);
+      const res = register(tx); 
+      await assertRegister(res, tx);
+    });
+  });
+
   describeWithBlockRevert("concludeFinal", () => {
     const testsConcludeFinal = [
       {
         prepare: async (tx: Transaction) => { tx.state.channelID = hash("wrongChannelID"); await tx.sign(parts) },
         desc: "concludeFinal with invalid channelID fails",
+        shouldRevert: true,
+      },
+      {
+        prepare: async (tx: Transaction) => { tx.params.ledgerChannel = false; await tx.sign(parts) },
+        desc: "concludeFinal for non-ledger channel fails",
         shouldRevert: true,
       },
       {
@@ -364,7 +414,7 @@ contract("Adjudicator", async (accounts) => {
     });
   });
 
-  describeWithBlockRevert("conclude with subchannels", () => {
+  describeWithBlockRevert("register, progress, conclude with subchannels", () => {
     /* Create channel tree
     *      root
     *     /    \
@@ -373,36 +423,36 @@ contract("Adjudicator", async (accounts) => {
     * sub1 sub2
     * 
     * subchannel 1 final, others non-final
-    * concludefinal 1
-    * register others
-    * conclude all
+    * register
+    * conclude
     * withdraw
     */
 
     let ledgerChannel: Channel
     let subchannels: Channel[]
 
-    function createChannel(nonce: string, version: string, balances: BN[]): Channel {
+    function createChannel(nonce: string, version: string, balances: BN[], ledger: boolean): Channel {
       let assets = [asset]
-      let params = new Params(app, timeout, nonce, parts)
+      let params = new Params(app, timeout, nonce, parts, ledger)
       let outcome = new Allocation(assets, [[balances[0].toString(), balances[1].toString()]], [])
       let state = new State(params.channelID(), version, outcome, "0x00", false)
       return new Channel(params, state)
     }
 
-    function createParentChannel(nonce: string, version: string, balances: BN[], subchannels: Channel[]): Channel {
-      let channel = createChannel(nonce, version, balances);
+    function createParentChannel(nonce: string, version: string, balances: BN[], subchannels: Channel[], ledger: boolean): Channel {
+      let channel = createChannel(nonce, version, balances, ledger);
       channel.state.outcome.locked = subchannels.map(subchannel => toSubAlloc(subchannel.state));
       return channel;
     }
 
     function createInvalidSubchannel(): Channel {
-      return createChannel("0", "0", balance);
+      return createChannel("0", "0", balance, false);
     }
 
     function toSubAlloc(state: State): SubAlloc {
       let assetTotals = state.outcome.balances.map(balancesForAsset => balancesForAsset.reduce((acc, val) => acc.add(new BN(val)), new BN('0')));
-      return new SubAlloc(state.channelID, assetTotals.map(assetTotal => assetTotal.toString()))
+      assetTotals = assetTotals.map((t, i) => t.add(state.outcome.locked.reduce((acc, val) => acc.add(new BN(val.balances[i])), new BN('0'))));
+      return new SubAlloc(state.channelID, assetTotals.map(assetTotal => assetTotal.toString()), [0, 1])
     }
 
     let nonceCounter = 0;
@@ -415,7 +465,7 @@ contract("Adjudicator", async (accounts) => {
         let nonce = newNonce()
         let version = nonce + nonce
         let nonceAsNumber = Number(nonce)
-        return createChannel(nonce, version, [ether(nonceAsNumber), ether(2 * nonceAsNumber)])
+        return createChannel(nonce, version, [ether(nonceAsNumber), ether(2 * nonceAsNumber)], false)
       })
       subchannels[1].state.isFinal = true
       subchannels[0].state.outcome.locked = [
@@ -427,6 +477,7 @@ contract("Adjudicator", async (accounts) => {
         "10",
         [ether(10), ether(20)],
         [subchannels[0], subchannels[3]],
+        true,
       );
 
       const outcome = accumulatedOutcome(ledgerChannel, subchannels);
@@ -434,31 +485,61 @@ contract("Adjudicator", async (accounts) => {
         depositWithAssertions(ledgerChannel.state.channelID, user, outcome[userIndex])))
     })
 
-    it("register channel and subchannels", async () => {
-      await registerWithAssertions(ledgerChannel)
-      await Promise.all(subchannels.map(async subchannel => {
-        if (subchannel.state.isFinal) { return }
-        return registerWithAssertions(subchannel)
-      }))
-    });
-
-    it("subchannel conclude final", async () => {
-      const subchannel = subchannels[1];
-      let res = adj.concludeFinal(
-        subchannel.params.serialize(),
-        subchannel.state.serialize(),
-        await subchannel.state.sign(subchannel.params.participants),
-        {from: accounts[0]}
+    it("register with wrong assets fails", async () => {
+      let subchannel = createChannel(newNonce(), "1", balance, false);
+      let ledgerChannel = createParentChannel(
+        newNonce(), "1", balance, [subchannel], true,
       );
-      await assertConcludeFinal(res, subchannel, false);
+
+      subchannel.state.outcome.assets = [zeroAddress];
+      let res = registerChannel(ledgerChannel, [subchannel]);
+      await truffleAssert.reverts(res, "address[]: unequal item");
     });
 
-    itWithBlockRevert("conclude with wrong number of subchannels fails", async () => {
-      await advanceBlockTime(2 * timeout + 1);
+    it("register with wrong number of subchannels fails", async () => {
+      let invalidSubchannels = subchannels.slice(-1);
+      let res = registerChannel(ledgerChannel, invalidSubchannels);
+      await truffleAssert.reverts(res, "subChannels: too short");
+    });
+
+    it("register with wrong subchannel ID fails", async () => {
       let invalidSubchannels = subchannels.slice();
-      invalidSubchannels.push(createInvalidSubchannel());
-      let res = concludeWithSubchannels(ledgerChannel, invalidSubchannels);
-      await truffleAssert.reverts(res, "wrong number of substates");
+      invalidSubchannels[0] = createInvalidSubchannel();
+      let res = registerChannel(ledgerChannel, invalidSubchannels);
+      await truffleAssert.reverts(res, "invalid sub-channel id");
+    });
+
+    it("register channel and subchannels", async () => {
+      await registerWithAssertions(ledgerChannel, subchannels)
+    });
+
+    itWithBlockRevert("progress with wrong suballoc id fails", async () => {
+      await advanceBlockTime(timeout + 1);
+      let newState = createChannel(
+        ledgerChannel.params.nonce, 
+        "11",
+        [new BN(ledgerChannel.state.outcome.balances[0][0]), new BN(ledgerChannel.state.outcome.balances[0][1])],
+        true,
+      );
+      newState.state.outcome.locked = ledgerChannel.state.outcome.locked.slice();
+      newState.state.outcome.locked[0] = new SubAlloc("0x0", [], []);
+      const sigs = await newState.state.sign(parts);
+      let res = progress(newState, ledgerChannel.state, 0, sigs[0]);
+      await truffleAssert.reverts(res, "SubAlloc: unequal ID");
+    });
+
+    itWithBlockRevert("progress succeeds", async () => {
+      await advanceBlockTime(timeout + 1);
+      let newState = createChannel(
+        ledgerChannel.params.nonce, 
+        "11",
+        [new BN(ledgerChannel.state.outcome.balances[0][0]), new BN(ledgerChannel.state.outcome.balances[0][1])],
+        true,
+      );
+      newState.state.outcome.locked = ledgerChannel.state.outcome.locked;
+      const sigs = await newState.state.sign(parts);
+      let res = progress(newState, ledgerChannel.state, 0, sigs[0]);
+      await assertProgress(res, newState);
     });
 
     itWithBlockRevert("conclude with wrong subchannel ID fails", async () => {
@@ -469,20 +550,13 @@ contract("Adjudicator", async (accounts) => {
       await truffleAssert.reverts(res);
     });
 
-    itWithBlockRevert("conclude with wrong assets fails", async () => {
-      let subchannel = createChannel(newNonce(), "1", balance);
-      let ledgerChannel = createParentChannel(
-        newNonce(), "1", balance, [subchannel],
-      );
-
-      subchannel.state.outcome.assets = [zeroAddress];
-      await registerWithAssertions(ledgerChannel);
-      await registerWithAssertions(subchannel);
-
+    itWithBlockRevert("conclude with wrong subchannel state fails", async () => {
       await advanceBlockTime(2 * timeout + 1);
-
-      let res = concludeWithSubchannels(ledgerChannel, [subchannel]);
-      await truffleAssert.reverts(res);
+      let tmp = subchannels[0].state.version; // save state
+      subchannels[0].state.version += "1"; // modify state
+      let res = concludeWithSubchannels(ledgerChannel, subchannels);
+      await truffleAssert.reverts(res, "invalid channel state");
+      subchannels[0].state.version = tmp; // restore state
     });
 
     it("conclude ledger channel and subchannels", async () => {
@@ -500,13 +574,13 @@ contract("Adjudicator", async (accounts) => {
       tx.state.version = "4";
       await tx.sign(parts);
       let res = register(tx);
-      assertRegister(res, tx);
+      await assertRegister(res, tx);
 
       let tx2 = new Transaction(parts, balance, timeout, "0x02", asset, app);
       tx2.state.version = "0";
       await tx2.sign(parts);
       let res2 = register(tx2);
-      assertRegister(res2, tx2);
+      await assertRegister(res2, tx2);
       differentChannelID = tx2.params.channelID();
     });
 
@@ -719,13 +793,6 @@ contract("Adjudicator", async (accounts) => {
     }
 
     testWithModifiedOldState(
-      "progress with locked funds in old state fails",
-      (tx: Transaction) => {
-        tx.state.outcome.locked = [dummySubAlloc];
-      }
-    );
-
-    testWithModifiedOldState(
       "progress with wrong number of asset balances in old state fails",
       (tx: Transaction) => tx.state.outcome.balances = [[new BN(1).toString()]]
     );
@@ -803,8 +870,8 @@ contract("Adjudicator", async (accounts) => {
       }
       await fund(tx)
       await fund(txNoApp)
-      await registerWithAssertions(tx)
-      await registerWithAssertions(txNoApp)
+      await registerWithAssertions(tx, [])
+      await registerWithAssertions(txNoApp, [])
     });
 
     it("conclude during DISPUTE fails", async () => {
@@ -815,6 +882,12 @@ contract("Adjudicator", async (accounts) => {
     it("conclude with app during FORCEEXEC fails", async () => {
       await advanceBlockTime(timeout + 1)
       await truffleAssert.reverts(conclude(tx))
+    });
+
+    it("conclude non-ledger channel fails", async () => {
+      let tx = prepareTransaction();
+      tx.params.ledgerChannel = false;
+      await truffleAssert.reverts(conclude(tx), "not ledger");
     });
 
     it("conclude without app skips FORCEEXEC and succeeds", async () => {

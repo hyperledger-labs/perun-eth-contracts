@@ -18,13 +18,16 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./Sig.sol";
+import "./Array.sol";
 
 library Channel {
     struct Params {
         uint256 challengeDuration;
         uint256 nonce;
-        address app;
         address[] participants;
+        address app;
+        bool ledgerChannel;
+        bool virtualChannel;
     }
 
     struct State {
@@ -47,6 +50,9 @@ library Channel {
         bytes32 ID; // solhint-disable-line var-name-mixedcase
         // balances holds the total balance of the subchannel of every asset.
         uint256[] balances;
+        // indexMap maps each sub-channel participant to a parent channel
+        // participant such that subPart[i] == parentPart[indexMap[i]].
+        uint16[] indexMap;
     }
 
     /**
@@ -77,4 +83,34 @@ library Channel {
     function encodeState(State memory state) internal pure returns (bytes memory)  {
         return abi.encode(state);
     }
+
+    /// @dev Asserts that a and b are equal.
+    function requireEqualSubAllocArray(
+        SubAlloc[] memory a,
+        SubAlloc[] memory b
+    )
+    internal pure
+    {
+        require(a.length == b.length, "SubAlloc[]: unequal length");
+        for (uint i = 0; i < a.length; i++) {
+            requireEqualSubAlloc(a[i], b[i]);
+        }
+    }
+
+    /// @dev Asserts that a and b are equal.
+    function requireEqualSubAlloc(
+        SubAlloc memory a,
+        SubAlloc memory b
+    )
+    internal pure
+    {
+        require(a.ID == b.ID, "SubAlloc: unequal ID");
+        Array.requireEqualUint256Array(a.balances, b.balances);
+        Array.requireEqualUint16Array(a.indexMap, b.indexMap);
+    }
+
+    /// @dev Returns whether the channel has an app.
+    function hasApp(Params memory params) internal pure returns (bool) {
+        return params.app != address(0);
+    } 
 }

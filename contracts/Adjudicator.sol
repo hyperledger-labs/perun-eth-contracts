@@ -22,6 +22,7 @@ import "./Channel.sol";
 import "./App.sol";
 import "./AssetHolder.sol";
 import "./SafeMath64.sol";
+import "./Array.sol";
 
 /**
  * @title The Perun Adjudicator
@@ -63,36 +64,106 @@ contract Adjudicator {
      */
     event ChannelUpdate(bytes32 indexed channelID, uint64 version, uint8 phase, uint64 timeout);
 
+    // SignedState is a combination of params, state, and signatures.
+    struct SignedState {
+        Channel.Params params;
+        Channel.State state;
+        bytes[] sigs;
+    }
+
     /**
-     * @notice Register registers a non-final state of a channel.
-     * If the call was successful a Registered event is emitted.
-     *
-     * @dev It can only be called if the channel has not been registered yet, or
-     * the refutation timeout has not passed.
-     * The caller has to provide n signatures on the state.
-     *
-     * @param params The parameters of the state channel.
-     * @param state The current state of the state channel.
-     * @param sigs Array of n signatures on the current state.
+     * @notice Register disputes the state of a ledger channel and its sub-channels.
+     * @param channel The ledger channel to be registered.
+     * @param subChannels The sub-channels in depth-first order.
      */
     function register(
-        Channel.Params memory params,
-        Channel.State memory state,
-        bytes[] memory sigs)
+        SignedState memory channel,
+        SignedState[] memory subChannels
+    )
     external
     {
+        require(channel.params.ledgerChannel, "not ledger");
+        registerRecursive(channel, subChannels, 0);
+    }
+
+    /**
+     * @dev registerRecursive registers a dispute for a channel and its sub-channels.
+     * It returns the accumulated outcome of the channel and its sub-channels.
+     * @param startIndex is the index of the first sub-channel of channel in subChannels.
+     * @param nextIndex is the index after the last processed sub-channel in subChannels.
+     * @return outcome The accumulated outcome of the channel and its sub-channels.
+     * @return nextIndex The index of the next sub-channel.
+     */
+    function registerRecursive(
+        SignedState memory channel,
+        SignedState[] memory subChannels,
+        uint startIndex)
+    internal
+    returns (uint256[] memory outcome, uint nextIndex)
+    {
+        nextIndex = startIndex;
+        Channel.Allocation memory alloc = channel.state.outcome;
+        address[] memory assets = alloc.assets;
+
+        // Register the channel and add the balances to outcome.
+        registerSingle(channel);
+        outcome = Array.accumulateUint256ArrayArray(alloc.balances);
+
+        // For each sub-channel, register recursively and check the accumulated
+        // outcome against the locked assets.
+        Channel.SubAlloc[] memory locked = alloc.locked;
+        require(locked.length <= subChannels.length, "subChannels: too short");
+        for (uint s = 0; s < locked.length; s++) {
+            SignedState memory _channel = subChannels[nextIndex++];
+            (Channel.SubAlloc memory subAlloc, Channel.State memory _state) =
+                (locked[s], _channel.state);
+            require(subAlloc.ID == _state.channelID, "invalid sub-channel id");
+
+            uint256[] memory _outcome;
+            (_outcome, nextIndex) = registerRecursive(_channel, subChannels, nextIndex);
+
+            Array.requireEqualAddressArray(assets, _state.outcome.assets);
+            Array.requireEqualUint256Array(subAlloc.balances, _outcome);
+            Array.addInplaceUint256Array(outcome, _outcome);
+        }
+    }
+
+    /**
+     * @dev registerSingle registers a channel dispute if the requirements are met:
+     * (not registered before) or (newer version and within refutation period).
+     * Registration is skipped if the channel state is already registered.
+     */
+    function registerSingle(
+        SignedState memory channel
+    )
+    internal
+    {
+        (Channel.Params memory params, Channel.State memory state) = 
+            (channel.params, channel.state);
+
         requireValidParams(params, state);
-        Channel.validateSignatures(params, state, sigs);
+        Channel.validateSignatures(params, state, channel.sigs);
+
+        if (params.virtualChannel) {
+            require(!Channel.hasApp(params), "cannot have app");
+            require(state.outcome.locked.length == 0, "cannot have locked funds");
+        }
 
         // If registered, require newer version and refutation timeout not passed.
         (Dispute memory dispute, bool registered) = getDispute(state.channelID);
         if (registered) {
+            if (dispute.stateHash == hashState(state)) {
+                // Skip if same state.
+                // This allows for refutation of related states.
+                return;
+            }
             require(dispute.version < state.version, "invalid version");
             require(dispute.phase == uint8(DisputePhase.DISPUTE), "incorrect phase");
             // solhint-disable-next-line not-rely-on-time
             require(block.timestamp < dispute.timeout, "refutation timeout passed");
         }
 
+        // Write state.
         storeChallenge(params, state, DisputePhase.DISPUTE);
     }
 
@@ -140,20 +211,13 @@ contract Adjudicator {
     }
 
     /**
-     * @notice Function `conclude` concludes the channel identified by `params` including its subchannels and pushes the accumulated outcome to the assetholders.
-     * @dev Assumes:
-     * - subchannels of `subStates` have participants `params.participants`
-     * Requires:
-     * - channel not yet concluded
-     * - channel parameters valid
-     * - channel states valid and registered
-     * - dispute timeouts reached
-     * Emits:
-     * - event Concluded
-     *
-     * @param params The parameters of the channel and its subchannels.
-     * @param state The previously stored state of the channel.
-     * @param subStates The previously stored states of the subchannels in depth-first order.
+     * @notice conclude concludes the channel identified by params including its
+     * sub-channels and sets the accumulated outcome at the assetholders.
+     * The channel must be a ledger channel and not have been concluded yet.
+     * Sub-channels are force-concluded if the parent channel is concluded.
+     * @param params are the channel parameters.
+     * @param state is the channel state.
+     * @param subStates are the sub-channel states.
      */
     function conclude(
         Channel.Params memory params,
@@ -161,12 +225,12 @@ contract Adjudicator {
         Channel.State[] memory subStates)
     external
     {
-        Dispute memory dispute = requireGetDispute(state.channelID);
-        require(dispute.phase != uint8(DisputePhase.CONCLUDED), "channel already concluded");
+        require(params.ledgerChannel, "not ledger");
         requireValidParams(params, state);
-
-        ensureTreeConcluded(state, subStates);
-        pushOutcome(state, subStates, params.participants);
+        
+        concludeSingle(state);
+        (uint256[][] memory outcome,) = forceConcludeRecursive(state, subStates, 0);
+        pushOutcome(state.channelID, state.outcome.assets, params.participants, outcome);
     }
 
     /**
@@ -187,6 +251,7 @@ contract Adjudicator {
         bytes[] memory sigs)
     external
     {
+        require(params.ledgerChannel, "not ledger");
         require(state.isFinal == true, "state not final");
         require(state.outcome.locked.length == 0, "cannot have sub-channels");
         requireValidParams(params, state);
@@ -199,9 +264,7 @@ contract Adjudicator {
         }
 
         storeChallenge(params, state, DisputePhase.CONCLUDED);
-
-        Channel.State[] memory subStates = new Channel.State[](0);
-        pushOutcome(state, subStates, params.participants);
+        pushOutcome(state.channelID, state.outcome.assets, params.participants, state.outcome.balances);
     }
 
     /**
@@ -251,7 +314,7 @@ contract Adjudicator {
         
         dispute.challengeDuration = uint64(params.challengeDuration);
         dispute.version = state.version;
-        dispute.hasApp = params.app != address(0);
+        dispute.hasApp = Channel.hasApp(params);
         dispute.phase = uint8(disputePhase);
         dispute.stateHash = hashState(state);
 
@@ -307,8 +370,7 @@ contract Adjudicator {
     {
         require(oldAlloc.balances.length == newAlloc.balances.length, "balances length mismatch");
         require(oldAlloc.assets.length == newAlloc.assets.length, "assets length mismatch");
-        require(oldAlloc.locked.length == 0, "funds locked in old state");
-        require(newAlloc.locked.length == 0, "funds locked in new state");
+        Channel.requireEqualSubAllocArray(oldAlloc.locked, newAlloc.locked);
         for (uint256 i = 0; i < newAlloc.assets.length; i++) {
             require(oldAlloc.assets[i] == newAlloc.assets[i], "assets[i] address mismatch");
             uint256 sumOld = 0;
@@ -325,76 +387,13 @@ contract Adjudicator {
     }
 
     /**
-     * @notice Function `ensureTreeConcluded` checks that `state` and
-     * `substates` form a valid channel state tree and marks the corresponding
-     * channels as concluded. The substates must be in depth-first order.
-     * The function emits a Concluded event for every not yet concluded channel.
-     * @dev The function works recursively using `ensureTreeConcludedRecursive`
-     * and `ensureConcluded` as helper functions.
-     *
-     * @param state The previously stored state of the channel.
-     * @param subStates The previously stored states of the subchannels in
-     * depth-first order.
+     * @dev concludeSingle attempts to conclude a channel state.
+     * Reverts if the channel is already concluded.
      */
-    function ensureTreeConcluded(
-        Channel.State memory state,
-        Channel.State[] memory subStates)
-    internal
-    {
-        ensureConcluded(state);
-        uint256 index = ensureTreeConcludedRecursive(state, subStates, 0);
-        require(index == subStates.length, "wrong number of substates");
-    }
-
-    /**
-     * @notice Function `ensureTreeConcludedRecursive` is a helper function for
-     * ensureTreeConcluded. It recursively checks the validity of the subchannel
-     * states given a parent channel state. It then sets the channels concluded.
-     * @param parentState The sub channels to be checked recursively.
-     * @param subStates The states of all subchannels in the tree in depth-first
-     * order.
-     * @param startIndex The index in subStates of the first item of
-     * subChannels.
-     * @return The index of the next state to be checked.
-     */
-    function ensureTreeConcludedRecursive(
-        Channel.State memory parentState,
-        Channel.State[] memory subStates,
-        uint256 startIndex)
-    internal
-    returns (uint256)
-    {
-        uint256 channelIndex = startIndex;
-        Channel.SubAlloc[] memory locked = parentState.outcome.locked;
-        for (uint256 i = 0; i < locked.length; i++) {
-            Channel.State memory state = subStates[channelIndex];
-            require(locked[i].ID == state.channelID, "invalid channel ID");
-            ensureConcluded(state);
-
-            channelIndex++;
-            if (state.outcome.locked.length > 0) {
-                channelIndex = ensureTreeConcludedRecursive(state, subStates, channelIndex);
-            }
-        }
-        return channelIndex;
-    }
-
-    /**
-     * @notice Function `ensureConcluded` checks for the given state
-     * that it has been registered and its timeout is reached.
-     * It then sets the channel as concluded and emits event Concluded.
-     * @dev The function is a helper function for `ensureTreeConcluded`.
-     * @param state The state of the target channel.
-     */
-    function ensureConcluded(
-        Channel.State memory state)
-    internal
-    {
+    function concludeSingle(Channel.State memory state) internal {
         Dispute memory dispute = requireGetDispute(state.channelID);
         require(dispute.stateHash == hashState(state), "invalid channel state");
-        
-        // Return immediately if already concluded.
-        if (dispute.phase == uint8(DisputePhase.CONCLUDED)) { return; }
+        require(dispute.phase != uint8(DisputePhase.CONCLUDED), "channel already concluded");
 
         // If still in phase DISPUTE and the channel has an app, increase the
         // timeout by one duration to account for phase FORCEEXEC.
@@ -409,43 +408,80 @@ contract Adjudicator {
     }
 
     /**
-     * @notice Function `pushOutcome` pushes the accumulated outcome of the
-     * channel identified by `state.channelID` and its subchannels referenced by
-     * `subStates` to the assetholder contracts.
-     * The following must be guaranteed when calling the function:
-     * - state and subStates conform with participants
-     * - the outcome has not been pushed yet
-     * @param state The state of the channel.
-     * @param subStates The states of the subchannels of the channel in
-     * depth-first order.
-     * @param participants The participants of the channel and the subchannels.
+     * @dev forceConcludeRecursive forces conclusion of a channel state and its subStates.
+     * @param state is the channel state.
+     * @param subStates are the sub-channel states.
+     * @param startIndex is the index of the first sub-channel.
+     * @return outcome is the accumulated outcome of the channel and its sub-channels.
+     * @return nextIndex is the index of the next sub-channel.
      */
-    function pushOutcome(
+    function forceConcludeRecursive(
         Channel.State memory state,
         Channel.State[] memory subStates,
-        address[] memory participants)
+        uint256 startIndex)
     internal
+    returns (uint256[][] memory outcome, uint nextIndex)
     {
+        forceConcludeSingle(state);
+
+        // Initialize with outcome of channel.
         address[] memory assets = state.outcome.assets;
+        outcome = new uint256[][](assets.length);
+        for (uint a = 0; a < assets.length; a++) {
+            uint256[] memory bals = state.outcome.balances[a];
+            outcome[a] = new uint256[](bals.length);
+            for (uint p = 0; p < bals.length; p++) {
+                outcome[a][p] = state.outcome.balances[a][p];
+            }
+        }
 
-        for (uint256 a = 0; a < assets.length; a++) {
-            // accumulate outcome over channel and subchannels
-            uint256[] memory outcome = new uint256[](participants.length);
-            for (uint256 p = 0; p < outcome.length; p++) {
-                outcome[p] = state.outcome.balances[a][p];
-                for (uint256 s = 0; s < subStates.length; s++) {
-                    Channel.State memory subState = subStates[s];
-                    require(subState.outcome.assets[a] == assets[a], "assets do not match");
+        // Process sub-channels.
+        nextIndex = startIndex;
+        Channel.SubAlloc[] memory locked = state.outcome.locked;
+        for (uint256 i = 0; i < locked.length; i++) {
+            Channel.SubAlloc memory subAlloc = locked[i];
+            Channel.State memory subState = subStates[nextIndex++];
+            require(subAlloc.ID == subState.channelID, "invalid subchannel id");
 
-                    // assumes participants at same index are the same
-                    uint256 acc = outcome[p];
-                    uint256 val = subState.outcome.balances[a][p];
-                    outcome[p] = acc.add(val);
+            uint256[][] memory subOutcome;
+            (subOutcome, nextIndex) = forceConcludeRecursive(subState, subStates, nextIndex);
+
+            // Add outcome of subchannels.
+            uint16[] memory indexMap = subAlloc.indexMap;
+            for (uint a = 0; a < assets.length; a++) {                
+                for (uint p = 0; p < indexMap.length; p++) {
+                    uint256 _subOutcome = subOutcome[a][p];
+                    uint16 _p = indexMap[p];
+                    outcome[a][_p] = outcome[a][_p].add(_subOutcome);
                 }
             }
+        }
+    }
 
-            // push accumulated outcome
-            AssetHolder(assets[a]).setOutcome(state.channelID, participants, outcome);
+    /**
+     * @dev forceConcludeSingle forces conclusion of a registered channel state.
+     * Reverts if the channel is not registered.
+     */
+    function forceConcludeSingle(Channel.State memory state) internal {
+        Dispute memory dispute = requireGetDispute(state.channelID);
+        require(dispute.stateHash == hashState(state), "invalid channel state");
+        dispute.phase = uint8(DisputePhase.CONCLUDED);
+        setDispute(state.channelID, dispute);
+    }
+
+    /**
+     * @dev pushOutcome sets the outcome at the asset holders.
+     */
+    function pushOutcome(
+        bytes32 channel,
+        address[] memory assets,
+        address[] memory participants,
+        uint256[][] memory outcome)
+    internal
+    {
+        for (uint a = 0; a < assets.length; a++) {
+            //slither-disable-next-line calls-loop
+            AssetHolder(assets[a]).setOutcome(channel, participants, outcome[a]);
         }
     }
 
@@ -453,8 +489,8 @@ contract Adjudicator {
      * @dev Returns the dispute state for the given channelID. The second return
      * value indicates whether the given channel has been registered yet.
      */
-    function getDispute(bytes32 _channelID) internal view returns (Dispute memory, bool) {
-        Dispute memory dispute = disputes[_channelID];
+    function getDispute(bytes32 chID) internal view returns (Dispute memory, bool) {
+        Dispute memory dispute = disputes[chID];
         return (dispute, dispute.stateHash != bytes32(0));
     }
 
@@ -462,8 +498,8 @@ contract Adjudicator {
      * @dev Returns the dispute state for the given channelID. Reverts if the
      * channel has not been registered yet.
      */
-    function requireGetDispute(bytes32 _channelID) internal view returns (Dispute memory) {
-        (Dispute memory dispute, bool registered) = getDispute(_channelID);
+    function requireGetDispute(bytes32 chID) internal view returns (Dispute memory) {
+        (Dispute memory dispute, bool registered) = getDispute(chID);
         require(registered, "not registered");
         return dispute;
     }
@@ -472,8 +508,8 @@ contract Adjudicator {
      * @dev Sets the dispute state for the given channelID. Emits event
      * ChannelUpdate.
      */
-    function setDispute(bytes32 _channelID, Dispute memory dispute) internal {
-        disputes[_channelID] = dispute;
-        emit ChannelUpdate(_channelID, dispute.version, dispute.phase, dispute.timeout);
+    function setDispute(bytes32 chID, Dispute memory dispute) internal {
+        disputes[chID] = dispute;
+        emit ChannelUpdate(chID, dispute.version, dispute.phase, dispute.timeout);
     }
 }
