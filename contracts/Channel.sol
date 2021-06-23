@@ -48,6 +48,9 @@ library Channel {
         bytes32 ID; // solhint-disable-line var-name-mixedcase
         // balances holds the total balance of the subchannel of every asset.
         uint256[] balances;
+        // indexMap maps each sub-channel participant to a parent channel
+        // participant such that subPart[i] == parentPart[indexMap[i]].
+        uint16[] indexMap;
     }
 
     /**
