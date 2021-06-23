@@ -365,8 +365,7 @@ contract Adjudicator {
     {
         require(oldAlloc.balances.length == newAlloc.balances.length, "balances length mismatch");
         require(oldAlloc.assets.length == newAlloc.assets.length, "assets length mismatch");
-        require(oldAlloc.locked.length == 0, "funds locked in old state");
-        require(newAlloc.locked.length == 0, "funds locked in new state");
+        Channel.requireEqualSubAllocArray(oldAlloc.locked, newAlloc.locked);
         for (uint256 i = 0; i < newAlloc.assets.length; i++) {
             require(oldAlloc.assets[i] == newAlloc.assets[i], "assets[i] address mismatch");
             uint256 sumOld = 0;

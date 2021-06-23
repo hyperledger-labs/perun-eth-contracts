@@ -21,6 +21,19 @@ import "../vendor/openzeppelin-contracts/contracts/math/SafeMath.sol";
 /// @notice Array is a library for array operations.
 library Array {
     using SafeMath for uint256;
+
+    /// @dev Asserts that a and b are equal.
+    function requireEqualUint16Array(
+        uint16[] memory a,
+        uint16[] memory b
+    )
+    internal pure
+    {
+        require(a.length == b.length, "uint16[]: unequal length");
+        for (uint i = 0; i < a.length; i++) {
+            require(a[i] == b[i], "uint16[]: unequal item");
+        }
+    }
     
     /// @dev Asserts that a and b are equal.
     function requireEqualAddressArray(

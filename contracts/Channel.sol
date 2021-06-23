@@ -18,6 +18,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./Sig.sol";
+import "./Array.sol";
 
 library Channel {
     struct Params {
@@ -80,5 +81,30 @@ library Channel {
 
     function encodeState(State memory state) internal pure returns (bytes memory)  {
         return abi.encode(state);
+    }
+
+    /// @dev Asserts that a and b are equal.
+    function requireEqualSubAllocArray(
+        SubAlloc[] memory a,
+        SubAlloc[] memory b
+    )
+    internal pure
+    {
+        require(a.length == b.length, "SubAlloc[]: unequal length");
+        for (uint i = 0; i < a.length; i++) {
+            requireEqualSubAlloc(a[i], b[i]);
+        }
+    }
+
+    /// @dev Asserts that a and b are equal.
+    function requireEqualSubAlloc(
+        SubAlloc memory a,
+        SubAlloc memory b
+    )
+    internal pure
+    {
+        require(a.ID == b.ID, "SubAlloc: unequal ID");
+        Array.requireEqualUint256Array(a.balances, b.balances);
+        Array.requireEqualUint16Array(a.indexMap, b.indexMap);
     }
 }
