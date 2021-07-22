@@ -465,8 +465,10 @@ contract Adjudicator {
     function forceConcludeSingle(Channel.State memory state) internal {
         Dispute memory dispute = requireGetDispute(state.channelID);
         require(dispute.stateHash == hashState(state), "invalid channel state");
-        dispute.phase = uint8(DisputePhase.CONCLUDED);
-        setDispute(state.channelID, dispute);
+        if (dispute.phase != uint8(DisputePhase.CONCLUDED)) {
+            dispute.phase = uint8(DisputePhase.CONCLUDED);
+            setDispute(state.channelID, dispute);
+        }
     }
 
     /**
