@@ -14,7 +14,7 @@ jobs:
       - name: License header
         run: .scripts/check-copyright-notice.sh
       - name: Authors
-        run: .scripts/check-notice-authors.sh origin/master
+        run: .scripts/check-notice-authors.sh origin/main
 
   build-and-test:
     name: Build & Test
