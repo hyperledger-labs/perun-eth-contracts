@@ -18,7 +18,7 @@ The authors take no responsibility for any loss of digital assets or other damag
 
 ## Contracts
 Perun's Generalized State Channels Framework uses a set of interconnected smart contracts to define the on-chain logic for channel deposits, disputes, settlements and withdrawals.
-For more detailed information, check out the [wiki](https://github.com/perun-network/contracts-eth/wiki).
+For more detailed information, check out the [documentation](https://labs.hyperledger.org/perun-doc/index.html).
 
 ### Asset Holder
 Asset holders are singleton contracts that hold the assets for ledger channels.
