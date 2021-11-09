@@ -10,7 +10,7 @@
   <a href="https://github.com/hyperledger-labs/perun-eth-contracts/actions/workflows/ci.yml"><img src="https://github.com/hyperledger-labs/perun-eth-contracts/actions/workflows/ci.yml/badge.svg" alt="Pipeline status"></a>
 </p>
 
-This repository contains the Ethereum smart contracts for [go-perun](https://github.com/perun-network/go-perun)'s Ethereum backend.
+This repository contains the Ethereum smart contracts for [go-perun](https://github.com/hyperledger-labs/go-perun)'s Ethereum backend.
 
 ## Security Disclaimer
 The smart contracts presented in this directory are under active development and are not ready for production use.
@@ -18,7 +18,7 @@ The authors take no responsibility for any loss of digital assets or other damag
 
 ## Contracts
 Perun's Generalized State Channels Framework uses a set of interconnected smart contracts to define the on-chain logic for channel deposits, disputes, settlements and withdrawals.
-For more detailed information, check out the [wiki](https://github.com/perun-network/contracts-eth/wiki).
+For more detailed information, check out the [documentation](https://labs.hyperledger.org/perun-doc/index.html).
 
 ### Asset Holder
 Asset holders are singleton contracts that hold the assets for ledger channels.
