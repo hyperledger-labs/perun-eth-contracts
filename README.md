@@ -10,7 +10,7 @@
   <a href="https://github.com/hyperledger-labs/perun-eth-contracts/actions/workflows/ci.yml"><img src="https://github.com/hyperledger-labs/perun-eth-contracts/actions/workflows/ci.yml/badge.svg" alt="Pipeline status"></a>
 </p>
 
-This repository contains the Ethereum smart contracts for [go-perun](https://github.com/perun-network/go-perun)'s Ethereum backend.
+This repository contains the Ethereum smart contracts for [go-perun](https://github.com/hyperledger-labs/go-perun)'s Ethereum backend.
 
 ## Security Disclaimer
 The smart contracts presented in this directory are under active development and are not ready for production use.
