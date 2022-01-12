@@ -89,8 +89,9 @@ contract Adjudicator {
     /**
      * @dev registerRecursive registers a dispute for a channel and its sub-channels.
      * It returns the accumulated outcome of the channel and its sub-channels.
+     * @param channel is the main channel to be registered.
+     * @param subChannels is a list of subChannels.
      * @param startIndex is the index of the first sub-channel of channel in subChannels.
-     * @param nextIndex is the index after the last processed sub-channel in subChannels.
      * @return outcome The accumulated outcome of the channel and its sub-channels.
      * @return nextIndex The index of the next sub-channel.
      */
