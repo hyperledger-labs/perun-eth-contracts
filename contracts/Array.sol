@@ -16,7 +16,7 @@
 
 pragma solidity ^0.8.0;
 
-import "../vendor/openzeppelin-contracts/contracts/math/SafeMath.sol";
+import "../vendor/openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
 
 /// @notice Array is a library for array operations.
 library Array {
