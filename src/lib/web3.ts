@@ -50,3 +50,8 @@ export async function currentTimestamp(): Promise<number> {
   let block = await web3.eth.getBlock(blocknumber);
   return block.timestamp as number;
 }
+
+export async function getChainID(): Promise<number> {
+  const chainID = await web3.eth.getChainId();
+  return chainID;
+}

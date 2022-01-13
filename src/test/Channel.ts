@@ -79,6 +79,7 @@ export class Params {
   }
 
   encode() {
+    // Copied from "build/contracts/Adjudicator.json".
     const paramsType = {
       "components": [
         {
@@ -150,6 +151,7 @@ export class State {
   }
 
   encode() {
+    // Copied from "build/contracts/Adjudicator.json".
     const stateType = {
       "components": [
         {
@@ -165,9 +167,21 @@ export class State {
         {
           "components": [
             {
-              "internalType": "address[]",
+              "components": [
+                {
+                  "internalType": "uint256",
+                  "name": "chainID",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "address",
+                  "name": "holder",
+                  "type": "address"
+                }
+              ],
+              "internalType": "struct Channel.Asset[]",
               "name": "assets",
-              "type": "address[]"
+              "type": "tuple[]"
             },
             {
               "internalType": "uint256[][]",
@@ -229,12 +243,22 @@ export class State {
   }
 }
 
+export class Asset {
+  chainID: number;
+  holder: string;
+
+  constructor(_chainID: number, _holder: string) {
+    this.chainID = _chainID;
+    this.holder = _holder;
+  }
+}
+
 export class Allocation {
-    assets: string[];
+    assets: Asset[];
     balances: string[][];
     locked: SubAlloc[];
   
-    constructor(_assets: string[], _balances: string[][], _locked: SubAlloc[]) {
+    constructor(_assets: Asset[], _balances: string[][], _locked: SubAlloc[]) {
       this.assets = _assets;
       this.balances = _balances;
       this.locked = _locked;
@@ -265,7 +289,7 @@ export class SubAlloc {
 export class Transaction extends Channel {
     sigs: string[];
   
-    constructor(parts: string[], balances: BN[], challengeDuration: number, nonce: string, asset: string, app: string) {
+    constructor(parts: string[], balances: BN[], challengeDuration: number, nonce: string, asset: Asset, app: string) {
       const params = new Params(app, challengeDuration, nonce, [parts[0], parts[1]], true);
       const outcome = new Allocation([asset], [[balances[0].toString(), balances[1].toString()]], []);
       const state = new State(params.channelID(), "0", outcome, "0x00", false);

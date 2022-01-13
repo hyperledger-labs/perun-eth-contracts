@@ -22,8 +22,8 @@ import {
   AssetHolderETHContract,
   AssetHolderETHInstance,
 } from "../../types/truffle-contracts";
-import { DisputePhase, Channel, SignedChannel, Params, Allocation, SubAlloc, Transaction, State } from "./Channel";
-import { ether, wei2eth, hash } from "../lib/web3";
+import { DisputePhase, Channel, SignedChannel, Params, Allocation, SubAlloc, Transaction, State, Asset } from "./Channel";
+import { ether, wei2eth, hash, getChainID } from "../lib/web3";
 import { fundingID, advanceBlockTime, describeWithBlockRevert, itWithBlockRevert } from "../lib/test";
 import BN from "bn.js";
 
@@ -38,7 +38,7 @@ contract("Adjudicator", async (accounts) => {
   let adj: AdjudicatorInstance;
   let ah: AssetHolderETHInstance;
   let app = "";
-  let asset = "";
+  let asset: Asset;
   let assetIndex = 0;
   const parts = [accounts[1], accounts[2]];
   const balance = [ether(10), ether(20)];
@@ -193,7 +193,8 @@ contract("Adjudicator", async (accounts) => {
       let appInstance = await TrivialApp.new();
       app = appInstance.address;
       ah = await AssetHolderETH.new(adj.address);
-      asset = ah.address;
+      const chainID = await getChainID();
+      asset = new Asset(chainID, ah.address);
   
       // app deployed, we can calculate the default parameters and channel id
       params = new Params(app, timeout, nonce, [parts[A], parts[B]], true);
@@ -492,9 +493,9 @@ contract("Adjudicator", async (accounts) => {
         newNonce(), "1", balance, [subchannel], true,
       );
 
-      subchannel.state.outcome.assets = [zeroAddress];
+      subchannel.state.outcome.assets = [new Asset(asset.chainID, zeroAddress)];
       let res = registerChannel(ledgerChannel, [subchannel]);
-      await truffleAssert.reverts(res, "address[]: unequal item");
+      await truffleAssert.reverts(res, "Asset: unequal holder");
     });
 
     it("register with wrong number of subchannels fails", async () => {
@@ -678,7 +679,7 @@ contract("Adjudicator", async (accounts) => {
       },
       {
         prepare: async (tx: Transaction) => {
-          tx.state.outcome.assets = [zeroAddress];
+          tx.state.outcome.assets = [new Asset(asset.chainID, zeroAddress)];
           await tx.sign(parts);
         },
         desc: "progress with mismatching assets fails",
