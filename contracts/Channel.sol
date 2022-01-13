@@ -38,8 +38,13 @@ library Channel {
         bool isFinal;
     }
 
+    struct Asset {
+        uint256 chainID;
+        address holder;
+    }
+
     struct Allocation {
-        address[] assets;
+        Asset[] assets;
         // Outer dimension are assets, inner dimension are the participants.
         uint256[][] balances;
         SubAlloc[] locked;
@@ -107,6 +112,30 @@ library Channel {
         require(a.ID == b.ID, "SubAlloc: unequal ID");
         Array.requireEqualUint256Array(a.balances, b.balances);
         Array.requireEqualUint16Array(a.indexMap, b.indexMap);
+    }
+
+    /// @dev Asserts that a and b are equal.
+    function requireEqualAsset(
+        Asset memory a,
+        Asset memory b
+    )
+    internal pure
+    {
+        require(a.chainID == b.chainID, "Asset: unequal chainID");
+        require(a.holder == b.holder, "Asset: unequal holder");
+    }
+
+    /// @dev Asserts that a and b are equal.
+    function requireEqualAssetArray(
+        Channel.Asset[] memory a,
+        Channel.Asset[] memory b
+    )
+    internal pure
+    {
+        require(a.length == b.length, "Asset[]: unequal length");
+        for (uint i = 0; i < a.length; i++) {
+            requireEqualAsset(a[i], b[i]);
+        }
     }
 
     /// @dev Returns whether the channel has an app.

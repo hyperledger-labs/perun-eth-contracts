@@ -104,7 +104,7 @@ contract Adjudicator {
     {
         nextIndex = startIndex;
         Channel.Allocation memory alloc = channel.state.outcome;
-        address[] memory assets = alloc.assets;
+        Channel.Asset[] memory assets = alloc.assets;
 
         // Register the channel and add the balances to outcome.
         registerSingle(channel);
@@ -123,7 +123,7 @@ contract Adjudicator {
             uint256[] memory _outcome;
             (_outcome, nextIndex) = registerRecursive(_channel, subChannels, nextIndex);
 
-            Array.requireEqualAddressArray(assets, _state.outcome.assets);
+            Channel.requireEqualAssetArray(assets, _state.outcome.assets);
             Array.requireEqualUint256Array(subAlloc.balances, _outcome);
             Array.addInplaceUint256Array(outcome, _outcome);
         }
@@ -373,7 +373,7 @@ contract Adjudicator {
         require(oldAlloc.assets.length == newAlloc.assets.length, "assets length mismatch");
         Channel.requireEqualSubAllocArray(oldAlloc.locked, newAlloc.locked);
         for (uint256 i = 0; i < newAlloc.assets.length; i++) {
-            require(oldAlloc.assets[i] == newAlloc.assets[i], "assets[i] address mismatch");
+            Channel.requireEqualAsset(oldAlloc.assets[i], newAlloc.assets[i]);
             uint256 sumOld = 0;
             uint256 sumNew = 0;
             require(oldAlloc.balances[i].length == numParts, "old balances length mismatch");
@@ -426,7 +426,7 @@ contract Adjudicator {
         forceConcludeSingle(state);
 
         // Initialize with outcome of channel.
-        address[] memory assets = state.outcome.assets;
+        Channel.Asset[] memory assets = state.outcome.assets;
         outcome = new uint256[][](assets.length);
         for (uint a = 0; a < assets.length; a++) {
             uint256[] memory bals = state.outcome.balances[a];
@@ -475,14 +475,17 @@ contract Adjudicator {
      */
     function pushOutcome(
         bytes32 channel,
-        address[] memory assets,
+        Channel.Asset[] memory assets,
         address[] memory participants,
         uint256[][] memory outcome)
     internal
     {
         for (uint a = 0; a < assets.length; a++) {
-            //slither-disable-next-line calls-loop
-            AssetHolder(assets[a]).setOutcome(channel, participants, outcome[a]);
+            Channel.Asset memory asset = assets[a];
+            if (asset.chainID == block.chainid) {
+                //slither-disable-next-line calls-loop
+                AssetHolder(asset.holder).setOutcome(channel, participants, outcome[a]);
+            }
         }
     }
 
