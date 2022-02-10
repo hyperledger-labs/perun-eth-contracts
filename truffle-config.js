@@ -1,5 +1,5 @@
 module.exports = {
-    plugins: ["truffle-security", "solidity-coverage"],
+    plugins: ["solidity-coverage"],
 
     mocha: {
         reporter: 'eth-gas-reporter',
