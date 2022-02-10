@@ -8,7 +8,7 @@
     "chai": "^4.2.0",
     "openzeppelin-solidity": "^2.1.2",
     "solhint": "^3.3.2",
-    "truffle": "^5.1.46",
+    "truffle": "5.4.10",
     "truffle-assertions": "^0.7.2",
     "typechain": "^0.3.11",
     "typescript": "^4.2.2",
