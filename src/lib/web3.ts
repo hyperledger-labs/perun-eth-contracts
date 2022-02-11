@@ -20,7 +20,12 @@ declare const web3: Web3;
 
 export async function sign(data: string, account: string) {
   let sig = await web3.eth.sign(web3.utils.soliditySha3(data) as string, account);
-  return sig;
+  // Update v value (add 27), if not done by web3.
+  let v = parseInt(sig.slice(130, 132), 16);
+  if (v < 27) {
+    v += 27;
+  }
+  return sig.slice(0, 130) + v.toString(16);
 }
 
 export function ether(x: number): BN { return web3.utils.toWei(web3.utils.toBN(x), "ether"); }
