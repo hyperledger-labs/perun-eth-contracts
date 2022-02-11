@@ -80,7 +80,7 @@ contract("Adjudicator", async (accounts) => {
     return adj.register(
       (await channel.signed()).serialize(),
       await Promise.all(subChannels.map(async ch => (await ch.signed()).serialize())),
-      { from: accounts[0] },
+      { from: accounts[0], gas: 500_000 },
     );
   }
 
@@ -117,7 +117,7 @@ contract("Adjudicator", async (accounts) => {
       ledgerChannel.params.serialize(),
       ledgerChannel.state.serialize(),
       subchannels.map(subchannel => subchannel.state.serialize()),
-      {from: accounts[0]}
+      {from: accounts[0], gas: 500_000}
     );
   }
 
