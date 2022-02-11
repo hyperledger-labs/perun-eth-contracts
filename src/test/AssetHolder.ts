@@ -32,7 +32,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
   async function testDeposit(idx: number, amount: BN, cid: string) {
     const fid = fundingID(cid, setup.parts[idx]);
     const oldBal = await setup.ah.holdings.call(fid);
-    truffleAssert.eventEmitted(
+    await truffleAssert.eventEmitted(
       await setup.deposit(fid, amount, setup.recv[idx]),
       'Deposited',
       (ev: any) => {
@@ -47,7 +47,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
     let balanceBefore = await setup.balanceOf(setup.recv[idx]);
     let authorization = new Authorization(cid, setup.parts[idx], setup.recv[idx], amount.toString());
     let signature = await sign(authorization.encode(), setup.parts[idx]);
-    truffleAssert.eventEmitted(
+    await truffleAssert.eventEmitted(
       await setup.ah.withdraw(authorization, signature, { from: setup.txSender }),
       'Withdrawn',
       (ev: any) => {
@@ -91,7 +91,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
      
       let authorization = new Authorization(setup.channelID, setup.parts[setup.A], setup.recv[setup.A], finalBalance[setup.A].toString());
       let signature = await sign(authorization.encode(), setup.parts[setup.A]);
-      return truffleAssert.reverts(
+      await truffleAssert.reverts(
         setup.ah.withdraw(authorization, signature, { from: setup.txSender })
       );
     });
@@ -119,7 +119,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
     });
 
     it("correct sender", async () => {
-      truffleAssert.eventEmitted(
+      await truffleAssert.eventEmitted(
         await setup.ah.setOutcome(setup.channelID, setup.parts, finalBalance, { from: setup.adj }),
         'OutcomeSet',
         (ev: any) => { return ev.channelID == setup.channelID }
@@ -167,7 +167,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
     it("A fails to overdraw with valid allowance", async () => {
       let authorization = new Authorization(setup.channelID, setup.parts[setup.A], setup.recv[setup.A], finalBalance[setup.A].toString());
       let signature = await sign(authorization.encode(), setup.parts[setup.A]);
-      return truffleAssert.reverts(
+      await truffleAssert.reverts(
         setup.ah.withdraw(authorization, signature, { from: setup.txSender })
       );
     });
@@ -181,19 +181,19 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
     })
 
     it("A deposits eth", async () => {
-      testDeposit(setup.A, ether(1), channelID);
+      await testDeposit(setup.A, ether(1), channelID);
     });
 
     it("set outcome of the asset holder with deposit refusal", async () => {
       assert(await setup.ah.settled.call(channelID) == false);
-      truffleAssert.eventEmitted(
+      await truffleAssert.eventEmitted(
         await setup.ah.setOutcome(channelID, setup.parts, finalBalance, { from: setup.adj }),
         'OutcomeSet',
         (ev: any) => { return ev.channelID == channelID; }
       );
       assert(await setup.ah.settled(channelID), "channel not settled");
       let id = fundingID(channelID, setup.parts[setup.A]);
-      assertHoldings(id, ether(1));
+      await assertHoldings(id, ether(1));
     });
 
     it("A fails to withdraw 2 eth after B's deposit refusal", async () => {

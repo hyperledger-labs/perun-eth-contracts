@@ -25,7 +25,7 @@ export class AssetHolderSetup {
     parts: string[];
     A = 0; B = 1;
     accounts: string[];
-    ah: any;    
+    ah: any;
     deposit: (fid: string, amount: BN, from: string) => Promise<Truffle.TransactionResponse>;
     balanceOf: (who: string) => Promise<BN>;
     /**
