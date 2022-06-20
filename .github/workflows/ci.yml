@@ -39,6 +39,13 @@ jobs:
       - name: Build
         run: yarn build
 
+      - name: Static analysis
+        run: |
+          pip3 install slither-analyzer==0.8.3
+          slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
+          # Alternatively, one can use Docker:
+          # WORKDIR=/share docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint slither trailofbits/eth-security-toolbox [insert slither parameters here]
+
       - name: Test
         run: yarn test
 
@@ -50,26 +57,3 @@ jobs:
         with:
           fail_ci_if_error: true # optional (default = false)
           verbose: true # optional (default = false)
-
-  static-analysis:
-    name: Static Analysis
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          submodules: recursive
-
-      - name: Install python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.x'
-
-      - name: Install Dependencies
-        run: |
-          pip3 install solc-select slither-analyzer==0.8.0
-          solc-select install 0.7.4
-          solc-select use 0.7.4
-
-      - name: Slither Analyzer
-        run: slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
