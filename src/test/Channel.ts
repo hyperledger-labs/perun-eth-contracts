@@ -257,13 +257,13 @@ export class Allocation {
     assets: Asset[];
     balances: string[][];
     locked: SubAlloc[];
-  
+
     constructor(_assets: Asset[], _balances: string[][], _locked: SubAlloc[]) {
       this.assets = _assets;
       this.balances = _balances;
       this.locked = _locked;
     }
-  
+
     serialize() {
       let _locked: any[] = this.locked.map(e => e.serialize());
       return { assets: this.assets, balances: this.balances, locked: _locked };
@@ -286,9 +286,10 @@ export class SubAlloc {
     }
 }
 
+// TODO: Allow multiple assets
 export class Transaction extends Channel {
     sigs: string[];
-  
+
     constructor(parts: string[], balances: BN[], challengeDuration: number, nonce: string, asset: Asset, app: string) {
       const params = new Params(app, challengeDuration, nonce, [parts[0], parts[1]], true);
       const outcome = new Allocation([asset], [[balances[0].toString(), balances[1].toString()]], []);
@@ -296,27 +297,27 @@ export class Transaction extends Channel {
       super(params, state);
       this.sigs = [];
     }
-  
+
     async sign(parts: string[]) {
       let stateEncoded = this.state.encode();
       this.sigs = await Promise.all(parts.map(participant => sign(stateEncoded, participant)));
     }
 }
-  
+
 
 export class Authorization {
     channelID: string;
     participant: string;
     receiver: string;
     amount: string;
-  
+
     constructor(_channelID: string, _participant: string, _receiver: string, _amount: string) {
       this.channelID = _channelID;
       this.participant = _participant;
       this.receiver = _receiver;
       this.amount = _amount;
     }
-  
+
     serialize() {
       return {
         channelID: this.channelID,
@@ -325,7 +326,7 @@ export class Authorization {
         amount: this.amount
       };
     }
-  
+
     encode() {
       return web3.eth.abi.encodeParameters(
         ['bytes32', 'address', 'address', 'uint256'],

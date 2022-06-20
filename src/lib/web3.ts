@@ -14,8 +14,9 @@
 
 /// <reference types="truffle-typings" />
 
-import { promisify } from "util";
+import {promisify} from "util";
 import Web3 from "web3";
+
 declare const web3: Web3;
 
 export async function sign(data: string, account: string) {
@@ -52,6 +53,5 @@ export async function currentTimestamp(): Promise<number> {
 }
 
 export async function getChainID(): Promise<number> {
-  const chainID = await web3.eth.getChainId();
-  return chainID;
+  return await web3.eth.getChainId();
 }

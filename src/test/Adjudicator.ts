@@ -26,6 +26,8 @@ import { DisputePhase, Channel, SignedChannel, Params, Allocation, SubAlloc, Tra
 import { ether, wei2eth, hash, getChainID } from "../lib/web3";
 import { fundingID, advanceBlockTime, describeWithBlockRevert, itWithBlockRevert } from "../lib/test";
 import BN from "bn.js";
+import {describe} from "mocha";
+import {randomHex} from "web3-utils";
 
 const Adjudicator = artifacts.require<AdjudicatorContract>("Adjudicator");
 const TrivialApp = artifacts.require<TrivialAppContract>("TrivialApp");
@@ -171,7 +173,7 @@ contract("Adjudicator", async (accounts) => {
     await assertConclude(res, channel, [], checkOutcome);
   }
 
-  async function depositWithAssertions(channelID: string, user: string, amount: BN) {    
+  async function depositWithAssertions(channelID: string, user: string, amount: BN) {
     const fid = fundingID(channelID, user);
     truffleAssert.eventEmitted(
       await ah.deposit(fid, amount, { value: amount, from: user }),
@@ -195,12 +197,12 @@ contract("Adjudicator", async (accounts) => {
       ah = await AssetHolderETH.new(adj.address);
       const chainID = await getChainID();
       asset = new Asset(chainID, ah.address);
-  
+
       // app deployed, we can calculate the default parameters and channel id
       params = new Params(app, timeout, nonce, [parts[A], parts[B]], true);
       channelID = params.channelID();
     });
-  
+
     initialDeposit(A);
     initialDeposit(B);
   });
@@ -344,7 +346,7 @@ contract("Adjudicator", async (accounts) => {
       tx.state.channelID = tx.params.channelID();
       tx.state.outcome.locked = [new SubAlloc(zeroBytes32, [], [])];
       await tx.sign(parts);
-      const res = register(tx); 
+      const res = register(tx);
       await truffleAssert.reverts(res, "cannot have locked funds");
     });
 
@@ -353,7 +355,7 @@ contract("Adjudicator", async (accounts) => {
       tx.params.virtualChannel = true;
       tx.state.channelID = tx.params.channelID();
       await tx.sign(parts);
-      const res = register(tx); 
+      const res = register(tx);
       await assertRegister(res, tx);
     });
   });
@@ -423,7 +425,7 @@ contract("Adjudicator", async (accounts) => {
     *   sub0   sub3
     *   /  \
     * sub1 sub2
-    * 
+    *
     * subchannel 1 final, others non-final
     * register
     * conclude
@@ -518,7 +520,7 @@ contract("Adjudicator", async (accounts) => {
     itWithBlockRevert("progress with wrong suballoc id fails", async () => {
       await advanceBlockTime(timeout + 1);
       let newState = createChannel(
-        ledgerChannel.params.nonce, 
+        ledgerChannel.params.nonce,
         "11",
         [new BN(ledgerChannel.state.outcome.balances[0][0]), new BN(ledgerChannel.state.outcome.balances[0][1])],
         true,
@@ -533,7 +535,7 @@ contract("Adjudicator", async (accounts) => {
     itWithBlockRevert("progress succeeds", async () => {
       await advanceBlockTime(timeout + 1);
       let newState = createChannel(
-        ledgerChannel.params.nonce, 
+        ledgerChannel.params.nonce,
         "11",
         [new BN(ledgerChannel.state.outcome.balances[0][0]), new BN(ledgerChannel.state.outcome.balances[0][1])],
         true,
@@ -782,7 +784,7 @@ contract("Adjudicator", async (accounts) => {
         await tx1.sign(parts);
         let res0 = register(tx1);
         await assertRegister(res0, tx1);
-  
+
         // test progress into new state
         let tx2 = new Transaction(parts, balance, timeout, nonce, asset, app);
         tx2.state.version = "2";
@@ -834,6 +836,36 @@ contract("Adjudicator", async (accounts) => {
       await assertConcludeFinal(res, tx);
     });
   });
+
+  describeWithBlockRevert("conclude with multi-ledger asset", () => {
+    let channelID: string;
+    let tx: Transaction;
+
+    async function prepare(asset: Asset) {
+      let randNonce = randomHex(32);
+      tx = new Transaction(parts, balance, timeout, randNonce, asset, app);
+      channelID = tx.params.channelID();
+      tx.state.isFinal = true;
+      await tx.sign(parts);
+
+      await depositWithAssertions(channelID, parts[A], balance[A]);
+      await depositWithAssertions(channelID, parts[B], balance[B]);
+    }
+
+    it("concludeFinal asset same chain", async () => {
+      await prepare(asset);
+      await concludeFinal(tx);
+      assert(await ah.settled.call(channelID), "expected channel to be settled");
+    });
+
+    it("concludeFinal asset different chain", async () => {
+      const chainID = await getChainID();
+      const diffAsset = new Asset(chainID + 1, ah.address);
+      await prepare(diffAsset);
+      await concludeFinal(tx);
+      assert(!await ah.settled.call(channelID), "expected channel to not be settled");
+    });
+  })
 
   describeWithBlockRevert("conclude", () => {
     // *** conclude without refute and progress ***
