@@ -51,16 +51,19 @@ jobs:
           fail_ci_if_error: true # optional (default = false)
           verbose: true # optional (default = false)
 
-  static-analysis:
-    name: Static Analysis
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          submodules: recursive
+# Slither does not run correctly in GitHub Actions. Not even when running it
+# through Docker. We disable the job until there is a solution to this problem.
 
-      - name: Slither Analyzer
-        run: |
-          WORKDIR=/share
-          docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint slither trailofbits/eth-security-toolbox --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
+  # static-analysis:
+  #   name: Static Analysis
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v2
+  #       with:
+  #         submodules: recursive
+
+  #     - name: Slither Analyzer
+  #       run: |
+  #         WORKDIR=/share
+  #         docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint slither trailofbits/eth-security-toolbox --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
