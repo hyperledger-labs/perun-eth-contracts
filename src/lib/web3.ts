@@ -30,7 +30,7 @@ export async function sign(data: string, account: string) {
 
 export function ether(x: number): BN { return web3.utils.toWei(web3.utils.toBN(x), "ether"); }
 
-export function wei2eth(x: BN): BN { return web3.utils.toBN(web3.utils.fromWei(x, "ether")); }
+export function wei2eth(x: BN): BN { return web3.utils.toBN(web3.utils.fromWei(x.toString(), "ether")); }
 
 export function hash(...val: any[]): string {
   return web3.utils.soliditySha3(...val) as string
