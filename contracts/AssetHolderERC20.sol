@@ -55,14 +55,14 @@ contract AssetHolderERC20 is AssetHolder {
 	}
 	
 	/**
-     * @notice Should not be called directly but only by the parent AssetHolder.
-     * @dev Withdraws tokens for channel participant authorization.participant
-	 * to authorization.receiver.
-     * @param authorization Withdrawal Authorization to authorize token transer
-     * from a channel participant to an on-chain receiver.
-     */
-	 //slither-disable-next-line dead-code
-    function withdrawEnact(WithdrawalAuth calldata authorization, bytes calldata) internal override {
-		require(token.transfer(authorization.receiver, authorization.amount), "transfer failed");
-	}
+   * @notice Should not be called directly but only by the parent AssetHolder.
+   * @dev Withdraws tokens for channel participant authorization.participant
+   * to authorization.receiver.
+   * @param authorization Withdrawal Authorization to authorize token transer
+   * from a channel participant to an on-chain receiver.
+   */
+  //slither-disable-next-line dead-code
+  function withdrawEnact(WithdrawalAuth calldata authorization, bytes calldata) internal override {
+    require(token.transfer(authorization.receiver, authorization.amount), "transfer failed");
+  }
 }
