@@ -76,5 +76,5 @@ jobs:
         working-directory: contracts
         run: |
           for FILE in Adjudicator.sol AssetHolderETH.sol AssetHolderERC20.sol PerunToken.sol TrivialApp.sol; do
-            slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ $FILE;
+            slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths ../vendor/ $FILE;
           done
