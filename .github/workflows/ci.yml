@@ -51,10 +51,10 @@ jobs:
           fail_ci_if_error: true # optional (default = false)
           verbose: true # optional (default = false)
 
-      # - name: Slither Analyzer Project
-      #   run: |
-      #     pip3 install slither-analyzer==0.8.3
-      #     slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
+      - name: Static Analysis
+        run: |
+          pip3 install slither-analyzer==0.8.3
+          slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
 
   # static-analysis:
   #   name: Static Analysis
