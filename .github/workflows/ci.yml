@@ -3,59 +3,21 @@ name: Solidity
 on: [push, pull_request]
 
 jobs:
-  check-copyright:
-    name: Copyright
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: License header
-        run: .scripts/check-copyright-notice.sh
-      - name: Authors
-        run: .scripts/check-notice-authors.sh origin/main
+  # check-copyright:
+  #   name: Copyright
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v2
+  #       with:
+  #         fetch-depth: 0
+  #     - name: License header
+  #       run: .scripts/check-copyright-notice.sh
+  #     - name: Authors
+  #       run: .scripts/check-notice-authors.sh origin/main
 
-  build-and-test:
-    name: Build & Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          submodules: recursive
-
-      - name: Install npm
-        uses: actions/setup-node@v2
-        with:
-          node-version: '16'
-
-      - name: Install dependencies
-        run: yarn
-
-      - name: Lint
-        run: npx solhint 'contracts/**/*.sol'
-
-      - name: Build
-        run: yarn build
-
-      - name: Test
-        run: yarn test
-
-      - name: Test coverage
-        run: npx truffle run coverage
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@v1
-        with:
-          fail_ci_if_error: true # optional (default = false)
-          verbose: true # optional (default = false)
-
-# Slither does not run correctly in GitHub Actions. Not even when running it
-# through Docker. We disable the job until there is a solution to this problem.
-
-  # static-analysis:
-  #   name: Static Analysis
+  # build-and-test:
+  #   name: Build & Test
   #   runs-on: ubuntu-latest
   #   steps:
   #     - name: Checkout repository
@@ -63,7 +25,42 @@ jobs:
   #       with:
   #         submodules: recursive
 
-  #     - name: Slither Analyzer
-  #       run: |
-  #         WORKDIR=/share
-  #         docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint slither trailofbits/eth-security-toolbox --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
+  #     - name: Install npm
+  #       uses: actions/setup-node@v2
+  #       with:
+  #         node-version: '16'
+
+  #     - name: Install dependencies
+  #       run: yarn
+
+  #     - name: Lint
+  #       run: npx solhint 'contracts/**/*.sol'
+
+  #     - name: Build
+  #       run: yarn build
+
+  #     - name: Test
+  #       run: yarn test
+
+  #     - name: Test coverage
+  #       run: npx truffle run coverage
+
+  #     - name: Upload coverage
+  #       uses: codecov/codecov-action@v1
+  #       with:
+  #         fail_ci_if_error: true # optional (default = false)
+  #         verbose: true # optional (default = false)
+
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Slither Analyzer
+        run: |
+          export WORKDIR=/share
+          docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint slither trailofbits/eth-security-toolbox --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
