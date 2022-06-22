@@ -51,37 +51,43 @@ jobs:
   #         fail_ci_if_error: true # optional (default = false)
   #         verbose: true # optional (default = false)
 
-  static-analysis:
-    name: Static Analysis
+  # static-analysis:
+  #   name: Static Analysis
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v3
+  #       with:
+  #         submodules: recursive
+
+  #     # Ideally we want to run slither on the project directory but the command does not return in GitHub CI.
+  #     # - name: Slither Analyzer
+  #     #   run: |
+  #     #     WORKDIR=/share
+  #     #     docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint slither trailofbits/eth-security-toolbox --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
+
+  #     - name: Install Dependencies
+  #       run: |
+  #         pip3 install solc-select slither-analyzer==0.8.3
+  #         solc-select install 0.7.6
+  #         solc-select use 0.7.6
+
+  #     - name: Slither Analyzer Project
+  #       run: slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
+
+  #     # - name: Slither Analyzer Project
+  #     #   run: slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ 'contracts/**/*.sol'
+
+  #     # - name: Slither Analyzer
+  #     #   run: |
+  #     #     for FILE in contracts/Adjudicator.sol contracts/AssetHolderETH.sol contracts/AssetHolderERC20.sol contracts/PerunToken.sol contracts/TrivialApp.sol; do
+  #     #       slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ $FILE;
+  #     #     done
+
+  analyze:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-
-      # Ideally we want to run slither on the project directory but the command does not return in GitHub CI.
-      # - name: Slither Analyzer
-      #   run: |
-      #     WORKDIR=/share
-      #     docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint slither trailofbits/eth-security-toolbox --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
-
-      - name: Install Dependencies
-        run: |
-          pip3 install solc-select slither-analyzer==0.8.3
-          solc-select install 0.7.6
-          solc-select use 0.7.6
-
-      # - name: Slither Analyzer Project
-      #   run: slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
-
-      - name: Slither Analyzer Project
-        run: slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ 'contracts/**/*.sol'
-
-      # - name: Slither Analyzer
-      #   run: |
-      #     for FILE in contracts/Adjudicator.sol contracts/AssetHolderETH.sol contracts/AssetHolderERC20.sol contracts/PerunToken.sol contracts/TrivialApp.sol; do
-      #       slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ $FILE;
-      #     done
+      - uses: actions/checkout@v3
+      - uses: crytic/slither-action@v0.1.1
 
 
