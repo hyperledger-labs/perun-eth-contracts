@@ -62,5 +62,8 @@ jobs:
 
       - name: Slither Analyzer
         run: |
-          export WORKDIR=/share
-          docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint slither trailofbits/eth-security-toolbox --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
+          IMAGE=trailofbits/eth-security-toolbox
+          docker pull $IMAGE
+          echo Pulling done.
+          WORKDIR=/share
+          docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint slither $IMAGE --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
