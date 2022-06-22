@@ -16,40 +16,45 @@ jobs:
   #     - name: Authors
   #       run: .scripts/check-notice-authors.sh origin/main
 
-  # build-and-test:
-  #   name: Build & Test
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v2
-  #       with:
-  #         submodules: recursive
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
 
-  #     - name: Install npm
-  #       uses: actions/setup-node@v2
-  #       with:
-  #         node-version: '16'
+      - name: Install npm
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
 
-  #     - name: Install dependencies
-  #       run: yarn
+      - name: Install dependencies
+        run: yarn
 
-  #     - name: Lint
-  #       run: npx solhint 'contracts/**/*.sol'
+      - name: Lint
+        run: npx solhint 'contracts/**/*.sol'
 
-  #     - name: Build
-  #       run: yarn build
+      - name: Build
+        run: yarn build
 
-  #     - name: Test
-  #       run: yarn test
+      - name: Test
+        run: yarn test
 
-  #     - name: Test coverage
-  #       run: npx truffle run coverage
+      - name: Test coverage
+        run: npx truffle run coverage
 
-  #     - name: Upload coverage
-  #       uses: codecov/codecov-action@v1
-  #       with:
-  #         fail_ci_if_error: true # optional (default = false)
-  #         verbose: true # optional (default = false)
+      - name: Upload coverage
+        uses: codecov/codecov-action@v1
+        with:
+          fail_ci_if_error: true # optional (default = false)
+          verbose: true # optional (default = false)
+
+      # - name: Slither Analyzer Project
+      #   run: |
+      #     pip3 install slither-analyzer==0.8.3
+      #     slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
 
   # static-analysis:
   #   name: Static Analysis
@@ -88,6 +93,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - uses: crytic/slither-action@v0.1.1
 
 
