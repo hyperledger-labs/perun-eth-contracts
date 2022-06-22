@@ -60,14 +60,11 @@ jobs:
         with:
           submodules: recursive
 
+      # Ideally we want to run slither on the project directory but the command does not return in GitHub CI.
       # - name: Slither Analyzer
       #   run: |
-      #     IMAGE=trailofbits/eth-security-toolbox
-      #     docker pull $IMAGE
-      #     echo Pulling done.
       #     WORKDIR=/share
-      #     docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint bash trailofbits/eth-security-toolbox -c "ls -l"
-      #     docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint slither $IMAGE --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
+      #     docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint slither trailofbits/eth-security-toolbox --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
 
       - name: Install Dependencies
         run: |
@@ -76,7 +73,8 @@ jobs:
           solc-select use 0.7.6
 
       - name: Slither Analyzer
+        working-directory: contracts
         run: |
-          for FILE in contracts/*.sol; do
+          for FILE in Adjudicator.sol AssetHolderETH.sol AssetHolderERC20.sol PerunToken.sol TrivialApp.sol; do
             slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ $FILE;
           done
