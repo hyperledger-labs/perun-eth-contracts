@@ -39,17 +39,17 @@ jobs:
       - name: Build
         run: yarn build
 
-      - name: Test
-        run: yarn test
+      # - name: Test
+      #   run: yarn test
 
-      - name: Test coverage
-        run: npx truffle run coverage
+      # - name: Test coverage
+      #   run: npx truffle run coverage
 
-      - name: Upload coverage
-        uses: codecov/codecov-action@v1
-        with:
-          fail_ci_if_error: true # optional (default = false)
-          verbose: true # optional (default = false)
+      # - name: Upload coverage
+      #   uses: codecov/codecov-action@v1
+      #   with:
+      #     fail_ci_if_error: true # optional (default = false)
+      #     verbose: true # optional (default = false)
 
       - name: Static Analysis
         run: |
