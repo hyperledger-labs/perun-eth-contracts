@@ -32,7 +32,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
   async function testDeposit(idx: number, amount: BN, cid: string) {
     const fid = fundingID(cid, setup.parts[idx]);
     const oldBal = await setup.ah.holdings.call(fid);
-    await truffleAssert.eventEmitted(
+    truffleAssert.eventEmitted(
       await setup.deposit(fid, amount, setup.recv[idx]),
       'Deposited',
       (ev: any) => {
@@ -47,7 +47,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
     let balanceBefore = await setup.balanceOf(setup.recv[idx]);
     let authorization = new Authorization(cid, setup.parts[idx], setup.recv[idx], amount.toString());
     let signature = await sign(authorization.encode(), setup.parts[idx]);
-    await truffleAssert.eventEmitted(
+    truffleAssert.eventEmitted(
       await setup.ah.withdraw(authorization, signature, { from: setup.txSender }),
       'Withdrawn',
       (ev: any) => {
@@ -119,7 +119,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
     });
 
     it("correct sender", async () => {
-      await truffleAssert.eventEmitted(
+      truffleAssert.eventEmitted(
         await setup.ah.setOutcome(setup.channelID, setup.parts, finalBalance, { from: setup.adj }),
         'OutcomeSet',
         (ev: any) => { return ev.channelID == setup.channelID }
@@ -186,7 +186,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
 
     it("set outcome of the asset holder with deposit refusal", async () => {
       assert(await setup.ah.settled.call(channelID) == false);
-      await truffleAssert.eventEmitted(
+      truffleAssert.eventEmitted(
         await setup.ah.setOutcome(channelID, setup.parts, finalBalance, { from: setup.adj }),
         'OutcomeSet',
         (ev: any) => { return ev.channelID == channelID; }
