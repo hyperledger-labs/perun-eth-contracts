@@ -73,8 +73,8 @@ jobs:
           solc-select use 0.7.6
 
       - name: Slither Analyzer
-        working-directory: contracts
+        # working-directory: contracts
         run: |
-          for FILE in Adjudicator.sol AssetHolderETH.sol AssetHolderERC20.sol PerunToken.sol TrivialApp.sol; do
-            slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths ../vendor/ $FILE;
+          for FILE in contracts/Adjudicator.sol contracts/AssetHolderETH.sol contracts/AssetHolderERC20.sol contracts/PerunToken.sol contracts/TrivialApp.sol; do
+            slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ $FILE;
           done
