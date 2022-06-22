@@ -69,11 +69,6 @@ jobs:
       #     docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint bash trailofbits/eth-security-toolbox -c "ls -l"
       #     docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint slither $IMAGE --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
 
-      - name: Install python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.x'
-
       - name: Install Dependencies
         run: |
           pip3 install solc-select slither-analyzer==0.8.3
