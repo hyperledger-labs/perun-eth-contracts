@@ -32,6 +32,7 @@ const TrivialApp = artifacts.require<TrivialAppContract>("TrivialApp");
 const AssetHolderETH = artifacts.require<AssetHolderETHContract>("AssetHolderETH");
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
+const zeroBytes32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 contract("Adjudicator", async (accounts) => {
   let adj: AdjudicatorInstance;
@@ -79,7 +80,7 @@ contract("Adjudicator", async (accounts) => {
     return adj.register(
       (await channel.signed()).serialize(),
       await Promise.all(subChannels.map(async ch => (await ch.signed()).serialize())),
-      { from: accounts[0] },
+      { from: accounts[0], gas: 500_000 },
     );
   }
 
@@ -116,7 +117,7 @@ contract("Adjudicator", async (accounts) => {
       ledgerChannel.params.serialize(),
       ledgerChannel.state.serialize(),
       subchannels.map(subchannel => subchannel.state.serialize()),
-      {from: accounts[0]}
+      {from: accounts[0], gas: 500_000}
     );
   }
 
@@ -340,7 +341,7 @@ contract("Adjudicator", async (accounts) => {
       let tx = new Transaction(parts, balance, timeout, nonce, asset, zeroAddress);
       tx.params.virtualChannel = true;
       tx.state.channelID = tx.params.channelID();
-      tx.state.outcome.locked = [new SubAlloc("0x0", [], [])];
+      tx.state.outcome.locked = [new SubAlloc(zeroBytes32, [], [])];
       await tx.sign(parts);
       const res = register(tx); 
       await truffleAssert.reverts(res, "cannot have locked funds");
@@ -522,7 +523,7 @@ contract("Adjudicator", async (accounts) => {
         true,
       );
       newState.state.outcome.locked = ledgerChannel.state.outcome.locked.slice();
-      newState.state.outcome.locked[0] = new SubAlloc("0x0", [], []);
+      newState.state.outcome.locked[0] = new SubAlloc(zeroBytes32, [], []);
       const sigs = await newState.state.sign(parts);
       let res = progress(newState, ledgerChannel.state, 0, sigs[0]);
       await truffleAssert.reverts(res, "SubAlloc: unequal ID");

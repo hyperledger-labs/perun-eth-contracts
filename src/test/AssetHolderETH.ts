@@ -33,7 +33,7 @@ contract("AssetHolderETH", (accounts: any) => {
     adjAddr.should.equal(setup.adj);
   });
 
-  function deposit(fid: string, amount: BN, from: string) {
+  function deposit(fid: string, amount: BN, from: string): Promise<Truffle.TransactionResponse> {
     return setup.ah.deposit(fid, amount, { value: amount, from: from })
   }
 

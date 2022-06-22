@@ -39,7 +39,7 @@ contract("AssetHolderERC20", (accounts: any) => {
     adjAddr.should.equal(setup.adj);
   });
 
-  async function deposit(fid: string, amount: BN, from: string) {
+  async function deposit(fid: string, amount: BN, from: string): Promise<Truffle.TransactionResponse> {
     truffleAssert.eventEmitted(
       await token.approve(setup.ah.address, amount, { from: from }),
       'Approval',

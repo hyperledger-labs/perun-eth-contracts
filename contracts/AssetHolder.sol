@@ -171,7 +171,7 @@ abstract contract AssetHolder {
      * This function is empty by default and the overrider does not need to
      * call it via `super`.
      */
-     //slither-disable-next-line dead-code
+    //slither-disable-next-line dead-code
     function depositCheck(bytes32 fundingID, uint256 amount) internal view virtual
     {} // solhint-disable no-empty-blocks
 
@@ -202,6 +202,7 @@ abstract contract AssetHolder {
      * This function is empty by default and the overrider does not need to
      * call it via `super`.
      */
+    //slither-disable-next-line dead-code
     function withdrawEnact(WithdrawalAuth calldata authorization, bytes calldata signature) internal virtual
     {} // solhint-disable no-empty-blocks
 
