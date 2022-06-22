@@ -76,4 +76,4 @@ jobs:
           solc-select use 0.7.6
 
       - name: Slither Analyzer
-        run: slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
+        run: slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ contracts/*.sol
