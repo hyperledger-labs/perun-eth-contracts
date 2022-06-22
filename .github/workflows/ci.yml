@@ -77,6 +77,6 @@ jobs:
 
       - name: Slither Analyzer
         run: |
-          for FILE in contracts/*.sol;
+          for FILE in contracts/*.sol; do
             slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ $FILE;
           done
