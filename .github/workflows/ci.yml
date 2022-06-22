@@ -66,4 +66,5 @@ jobs:
           docker pull $IMAGE
           echo Pulling done.
           WORKDIR=/share
+          docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint bash trailofbits/eth-security-toolbox -c ls
           docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint slither $IMAGE --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
