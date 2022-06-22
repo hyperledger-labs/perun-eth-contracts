@@ -78,3 +78,7 @@ jobs:
           for FILE in contracts/Adjudicator.sol contracts/AssetHolderETH.sol contracts/AssetHolderERC20.sol contracts/PerunToken.sol contracts/TrivialApp.sol; do
             slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ $FILE;
           done
+
+      - name: Slither Analyzer Project
+        # working-directory: contracts
+        run: slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
