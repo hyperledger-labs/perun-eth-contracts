@@ -286,7 +286,6 @@ export class SubAlloc {
     }
 }
 
-// TODO: Allow multiple assets
 export class Transaction extends Channel {
     sigs: string[];
 

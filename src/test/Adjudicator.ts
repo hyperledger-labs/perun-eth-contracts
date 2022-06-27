@@ -26,7 +26,6 @@ import { DisputePhase, Channel, SignedChannel, Params, Allocation, SubAlloc, Tra
 import { ether, wei2eth, hash, getChainID } from "../lib/web3";
 import { fundingID, advanceBlockTime, describeWithBlockRevert, itWithBlockRevert } from "../lib/test";
 import BN from "bn.js";
-import {describe} from "mocha";
 import {randomHex} from "web3-utils";
 
 const Adjudicator = artifacts.require<AdjudicatorContract>("Adjudicator");
@@ -865,7 +864,7 @@ contract("Adjudicator", async (accounts) => {
       await concludeFinal(tx);
       assert(!await ah.settled.call(channelID), "expected channel to not be settled");
     });
-  })
+  });
 
   describeWithBlockRevert("conclude", () => {
     // *** conclude without refute and progress ***
