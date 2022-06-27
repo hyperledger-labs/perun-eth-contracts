@@ -34,20 +34,6 @@ library Array {
             require(a[i] == b[i], "uint16[]: unequal item");
         }
     }
-    
-    /// @dev Asserts that a and b are equal.
-    function requireEqualAddressArray(
-        address[] memory a,
-        address[] memory b
-    )
-    internal
-    pure
-    {
-        require(a.length == b.length, "address[]: unequal length");
-        for (uint i = 0; i < a.length; i++) {
-            require(a[i] == b[i], "address[]: unequal item");
-        }
-    }
 
     /// @dev Asserts that a and b are equal.
     function requireEqualUint256Array(
