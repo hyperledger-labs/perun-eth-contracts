@@ -836,7 +836,10 @@ contract("Adjudicator", async (accounts) => {
     });
   });
 
-  describeWithBlockRevert("conclude with multi-ledger asset", () => {
+  // These tests have to be skipped for the solidity-coverage test because they
+  // rely on the contracts using a `block.chainid` call which currently does not
+  // work due to incompatibility issues with solidity-coverage and ganache.
+  describeWithBlockRevert("conclude with multi-ledger asset [ @skip-on-coverage ]", () => {
     let channelID: string;
     let tx: Transaction;
 
