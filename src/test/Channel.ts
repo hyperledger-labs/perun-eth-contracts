@@ -79,6 +79,7 @@ export class Params {
   }
 
   encode() {
+    // Copied from "build/contracts/Adjudicator.json".
     const paramsType = {
       "components": [
         {
@@ -150,6 +151,7 @@ export class State {
   }
 
   encode() {
+    // Copied from "build/contracts/Adjudicator.json".
     const stateType = {
       "components": [
         {
@@ -165,9 +167,21 @@ export class State {
         {
           "components": [
             {
-              "internalType": "address[]",
+              "components": [
+                {
+                  "internalType": "uint256",
+                  "name": "chainID",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "address",
+                  "name": "holder",
+                  "type": "address"
+                }
+              ],
+              "internalType": "struct Channel.Asset[]",
               "name": "assets",
-              "type": "address[]"
+              "type": "tuple[]"
             },
             {
               "internalType": "uint256[][]",
@@ -229,17 +243,27 @@ export class State {
   }
 }
 
+export class Asset {
+  chainID: number;
+  holder: string;
+
+  constructor(_chainID: number, _holder: string) {
+    this.chainID = _chainID;
+    this.holder = _holder;
+  }
+}
+
 export class Allocation {
-    assets: string[];
+    assets: Asset[];
     balances: string[][];
     locked: SubAlloc[];
-  
-    constructor(_assets: string[], _balances: string[][], _locked: SubAlloc[]) {
+
+    constructor(_assets: Asset[], _balances: string[][], _locked: SubAlloc[]) {
       this.assets = _assets;
       this.balances = _balances;
       this.locked = _locked;
     }
-  
+
     serialize() {
       let _locked: any[] = this.locked.map(e => e.serialize());
       return { assets: this.assets, balances: this.balances, locked: _locked };
@@ -264,35 +288,35 @@ export class SubAlloc {
 
 export class Transaction extends Channel {
     sigs: string[];
-  
-    constructor(parts: string[], balances: BN[], challengeDuration: number, nonce: string, asset: string, app: string) {
+
+    constructor(parts: string[], balances: BN[], challengeDuration: number, nonce: string, asset: Asset, app: string) {
       const params = new Params(app, challengeDuration, nonce, [parts[0], parts[1]], true);
       const outcome = new Allocation([asset], [[balances[0].toString(), balances[1].toString()]], []);
       const state = new State(params.channelID(), "0", outcome, "0x00", false);
       super(params, state);
       this.sigs = [];
     }
-  
+
     async sign(parts: string[]) {
       let stateEncoded = this.state.encode();
       this.sigs = await Promise.all(parts.map(participant => sign(stateEncoded, participant)));
     }
 }
-  
+
 
 export class Authorization {
     channelID: string;
     participant: string;
     receiver: string;
     amount: string;
-  
+
     constructor(_channelID: string, _participant: string, _receiver: string, _amount: string) {
       this.channelID = _channelID;
       this.participant = _participant;
       this.receiver = _receiver;
       this.amount = _amount;
     }
-  
+
     serialize() {
       return {
         channelID: this.channelID,
@@ -301,7 +325,7 @@ export class Authorization {
         amount: this.amount
       };
     }
-  
+
     encode() {
       return web3.eth.abi.encodeParameters(
         ['bytes32', 'address', 'address', 'uint256'],

@@ -14,9 +14,9 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
-import "../vendor/openzeppelin-contracts/contracts/math/SafeMath.sol";
+import "../vendor/openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
 
 /// @notice Array is a library for array operations.
 library Array {
@@ -32,20 +32,6 @@ library Array {
         require(a.length == b.length, "uint16[]: unequal length");
         for (uint i = 0; i < a.length; i++) {
             require(a[i] == b[i], "uint16[]: unequal item");
-        }
-    }
-    
-    /// @dev Asserts that a and b are equal.
-    function requireEqualAddressArray(
-        address[] memory a,
-        address[] memory b
-    )
-    internal
-    pure
-    {
-        require(a.length == b.length, "address[]: unequal length");
-        for (uint i = 0; i < a.length; i++) {
-            require(a[i] == b[i], "address[]: unequal item");
         }
     }
 
