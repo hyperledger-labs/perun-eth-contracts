@@ -24,6 +24,6 @@ module.exports = async function(deployer, _network, accounts) {
   await deployer.deploy(Adjudicator);
 
   await deployer.deploy(AssetHolderETH, Adjudicator.address);
-  await deployer.deploy(ERC20Token, accounts, 1<<10);
+  await deployer.deploy(ERC20Token, "PerunToken", "PRN", accounts, 1<<10);
   await deployer.deploy(AssetHolderERC20, Adjudicator.address, ERC20Token.address);
 };

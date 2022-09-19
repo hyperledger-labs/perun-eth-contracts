@@ -30,7 +30,7 @@ contract("AssetHolderERC20", (accounts: any) => {
   let setup: AssetHolderSetup = new AssetHolderSetup(undefined, accounts, deposit, balanceOf);
 
   it("should deploy the ERC20Token contract", async () => {
-    token = await ERC20Token.new(accounts, ether(100));
+    token = await ERC20Token.new("PerunToken", "PRN", accounts, ether(100));
   });
 
   it("should deploy the AssetHolderERC20 contract", async () => {

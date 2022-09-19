@@ -25,10 +25,16 @@ contract ERC20Token is ERC20 {
     using SafeMath for uint256;
 
     /**
-     * @dev Creates a new ERC20Token contract instance with `accounts` being
-     * funded with `initBalance` tokens.
+     * @dev Creates a new ERC20Token contract instance with the given `name`,
+     * `code`, and `accounts` being funded with `initBalance` tokens.
      */
-    constructor (address[] memory accounts, uint256 initBalance) ERC20("ERC20Token", "ERC") {
+    constructor (
+        string memory name,
+        string memory code,
+        address[] memory accounts,
+        uint256 initBalance)
+    ERC20(name, code)
+    {
         for (uint256 i = 0; i < accounts.length; i++) {
             _mint(accounts[i], initBalance);
         }
