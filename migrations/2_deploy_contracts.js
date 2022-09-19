@@ -15,7 +15,7 @@
 var Adjudicator = artifacts.require("Adjudicator");
 var AssetHolderETH = artifacts.require("AssetHolderETH");
 var AssetHolderERC20 = artifacts.require("AssetHolderERC20");
-var PerunToken = artifacts.require("PerunToken");
+var ERC20Token = artifacts.require("ERC20Token");
 var Channel = artifacts.require("Channel");
 
 module.exports = async function(deployer, _network, accounts) {
@@ -24,6 +24,6 @@ module.exports = async function(deployer, _network, accounts) {
   await deployer.deploy(Adjudicator);
 
   await deployer.deploy(AssetHolderETH, Adjudicator.address);
-  await deployer.deploy(PerunToken, accounts, 1<<10);
-  await deployer.deploy(AssetHolderERC20, Adjudicator.address, PerunToken.address);
+  await deployer.deploy(ERC20Token, accounts, 1<<10);
+  await deployer.deploy(AssetHolderERC20, Adjudicator.address, ERC20Token.address);
 };

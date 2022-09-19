@@ -15,22 +15,22 @@
 import { should } from "chai";
 should();
 const truffleAssert = require('truffle-assertions');
-import { AssetHolderERC20Contract, PerunTokenContract, PerunTokenInstance } from "../../types/truffle-contracts";
+import { AssetHolderERC20Contract, ERC20TokenContract, ERC20TokenInstance } from "../../types/truffle-contracts";
 import { ether } from "../lib/web3";
 import { AssetHolderSetup } from "./Setup";
 import { genericAssetHolderTest } from "./AssetHolder";
 
 const AssetHolderERC20 = artifacts.require<AssetHolderERC20Contract>("AssetHolderERC20");
-const PerunToken = artifacts.require<PerunTokenContract>("PerunToken");
+const ERC20Token = artifacts.require<ERC20TokenContract>("ERC20Token");
 
 contract("AssetHolderERC20", (accounts: any) => {
-  let token: PerunTokenInstance;
+  let token: ERC20TokenInstance;
   // Pass `undefined` as AssetHolder and set it in the deploy step.
   // Needed because of how mocha binds variables.
   let setup: AssetHolderSetup = new AssetHolderSetup(undefined, accounts, deposit, balanceOf);
 
-  it("should deploy the PerunToken contract", async () => {
-    token = await PerunToken.new(accounts, ether(100));
+  it("should deploy the ERC20Token contract", async () => {
+    token = await ERC20Token.new(accounts, ether(100));
   });
 
   it("should deploy the AssetHolderERC20 contract", async () => {
