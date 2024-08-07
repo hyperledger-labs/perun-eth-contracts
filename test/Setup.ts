@@ -1,4 +1,4 @@
-// Copyright 2020 - See NOTICE file for copyright holders.
+// Copyright 2024 - See NOTICE file for copyright holders.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { hash } from "../lib/web3";
-import web3 from "web3";
+import { BigNumberish, keccak256, ethers, TransactionResponse } from "ethers";
+
 
 // AssetHolderSetup is the setup for `genericAssetHolderTest`. 
 export class AssetHolderSetup {
@@ -26,21 +26,26 @@ export class AssetHolderSetup {
     A = 0; B = 1;
     accounts: string[];
     ah: any;
-    deposit: (fid: string, amount: BN, from: string) => Promise<Truffle.TransactionResponse>;
-    balanceOf: (who: string) => Promise<BN>;
-    /**
-     * Index of the Adjudicator address in the `accounts` array.
-     */
+    ahInterface: any;
+    deposit: (fid: string, amount: BigNumberish, from: string) => Promise<TransactionResponse>;
+    balanceOf: (who: string) => Promise<BigNumberish>;
 
-    constructor(ah: any, accounts: string[], deposit: (fid: string, amount: BN, from: string) => Promise<Truffle.TransactionResponse>, balanceOf: (who: string) => Promise<BN>) {
-        this.channelID = hash(web3.utils.randomHex(32));
-        this.unfundedChannelID = hash(web3.utils.randomHex(32));
+    constructor(
+        ah: any,
+        accounts: string[],
+        deposit: (fid: string, amount: BigNumberish, from: string) => Promise<TransactionResponse>,
+        ahInterface: any,
+        balanceOf: (who: string) => Promise<BigNumberish>,
+    ) {
+        this.channelID = keccak256(ethers.randomBytes(32));
+        this.unfundedChannelID = keccak256(ethers.randomBytes(32));
         this.txSender = accounts[5];
         this.adj = accounts[9];
         this.parts = [accounts[1], accounts[2]];
         this.recv = [accounts[3], accounts[4]];
         this.accounts = accounts;
         this.ah = ah;
+        this.ahInterface = ahInterface;
         this.deposit = deposit;
         this.balanceOf = balanceOf;
     }
