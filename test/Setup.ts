@@ -13,8 +13,9 @@
 // limitations under the License.
 
 import { BigNumberish, keccak256, ethers, TransactionResponse } from "ethers";
+import {Participant} from "./Channel";
 
-
+const zeroAddress = "0x0000000000000000000000000000000000000000";
 // AssetHolderSetup is the setup for `genericAssetHolderTest`. 
 export class AssetHolderSetup {
     channelID: string;
@@ -22,7 +23,7 @@ export class AssetHolderSetup {
     txSender: string;
     adj: string;
     recv: string[];
-    parts: string[];
+    parts: Participant[];
     A = 0; B = 1;
     accounts: string[];
     ah: any;
@@ -41,7 +42,7 @@ export class AssetHolderSetup {
         this.unfundedChannelID = keccak256(ethers.randomBytes(32));
         this.txSender = accounts[5];
         this.adj = accounts[9];
-        this.parts = [accounts[1], accounts[2]];
+        this.parts = [new Participant(accounts[1], zeroAddress, zeroAddress, zeroAddress), new Participant(accounts[2], zeroAddress, zeroAddress, zeroAddress)];
         this.recv = [accounts[3], accounts[4]];
         this.accounts = accounts;
         this.ah = ah;

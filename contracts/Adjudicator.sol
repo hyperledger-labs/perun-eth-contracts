@@ -125,7 +125,7 @@ contract Adjudicator {
                 locked[s],
                 _channel.state
             );
-            require(subAlloc.ID == _state.channelID, "invalid sub-channel id");
+            require(Channel.AreBytes32ArraysEqual(subAlloc.ID, _state.channelID), "invalid sub-channel id");
 
             uint256[] memory _outcome;
             (_outcome, nextIndex) = registerRecursive(
@@ -163,7 +163,10 @@ contract Adjudicator {
         }
 
         // If registered, require newer version and refutation timeout not passed.
-        (Dispute memory dispute, bool registered) = getDispute(state.channelID);
+        (Dispute memory dispute, bool registered) = getDispute(state.channelID[Channel.FindBackendIndex(
+            state.channelID,
+            state.outcome.backends
+        )]);
         if (registered) {
             if (dispute.stateHash == hashState(state)) {
                 // Skip if same state.
@@ -207,7 +210,10 @@ contract Adjudicator {
         uint256 actorIdx,
         bytes memory sig
     ) external {
-        Dispute memory dispute = requireGetDispute(state.channelID);
+        Dispute memory dispute = requireGetDispute(state.channelID[Channel.FindBackendIndex(
+            state.channelID,
+            state.outcome.backends
+        )]);
         if (dispute.phase == uint8(DisputePhase.DISPUTE)) {
             // solhint-disable-next-line not-rely-on-time
             require(block.timestamp >= dispute.timeout, "timeout not passed");
@@ -290,7 +296,10 @@ contract Adjudicator {
         Channel.validateSignatures(params, state, sigs);
 
         // If registered, require not concluded.
-        (Dispute memory dispute, bool registered) = getDispute(state.channelID);
+        (Dispute memory dispute, bool registered) = getDispute(state.channelID[Channel.FindBackendIndex(
+            state.channelID,
+            state.outcome.backends
+        )]);
         if (registered) {
             require(
                 dispute.phase != uint8(DisputePhase.CONCLUDED),
@@ -338,7 +347,11 @@ contract Adjudicator {
         Channel.Params memory params,
         Channel.State memory state
     ) internal pure {
-        require(state.channelID == channelID(params), "invalid params");
+        uint256 zeroIndex = Channel.FindBackendIndex(
+            state.channelID,
+            state.outcome.backends
+        );
+        require(state.channelID[zeroIndex] == channelID(params), "invalid params");
     }
 
     /**
@@ -353,7 +366,11 @@ contract Adjudicator {
         Channel.State memory state,
         DisputePhase disputePhase
     ) internal {
-        (Dispute memory dispute, bool registered) = getDispute(state.channelID);
+        uint256 zeroIndex = Channel.FindBackendIndex(
+            state.channelID,
+            state.outcome.backends
+        );
+        (Dispute memory dispute, bool registered) = getDispute(state.channelID[zeroIndex]);
 
         dispute.challengeDuration = uint64(params.challengeDuration);
         dispute.version = state.version;
@@ -376,7 +393,7 @@ contract Adjudicator {
             );
         }
 
-        setDispute(state.channelID, dispute);
+        setDispute(state.channelID[zeroIndex], dispute);
     }
 
     /**
@@ -455,7 +472,11 @@ contract Adjudicator {
      * Reverts if the channel is already concluded.
      */
     function concludeSingle(Channel.State memory state) internal {
-        Dispute memory dispute = requireGetDispute(state.channelID);
+        uint64 zeroIndex = Channel.FindBackendIndex(
+            state.channelID,
+            state.outcome.backends
+        );
+        Dispute memory dispute = requireGetDispute(state.channelID[zeroIndex]);
         require(dispute.stateHash == hashState(state), "invalid channel state");
         require(
             dispute.phase != uint8(DisputePhase.CONCLUDED),
@@ -471,7 +492,7 @@ contract Adjudicator {
         require(block.timestamp >= dispute.timeout, "timeout not passed yet");
         dispute.phase = uint8(DisputePhase.CONCLUDED);
 
-        setDispute(state.channelID, dispute);
+        setDispute(state.channelID[zeroIndex], dispute);
     }
 
     /**
@@ -506,7 +527,7 @@ contract Adjudicator {
         for (uint256 i = 0; i < locked.length; i++) {
             Channel.SubAlloc memory subAlloc = locked[i];
             Channel.State memory subState = subStates[nextIndex++];
-            require(subAlloc.ID == subState.channelID, "invalid subchannel id");
+            require(Channel.AreBytes32ArraysEqual(subAlloc.ID, subState.channelID), "invalid subchannel id");
 
             uint256[][] memory subOutcome;
             (subOutcome, nextIndex) = forceConcludeRecursive(
@@ -532,11 +553,15 @@ contract Adjudicator {
      * Reverts if the channel is not registered.
      */
     function forceConcludeSingle(Channel.State memory state) internal {
-        Dispute memory dispute = requireGetDispute(state.channelID);
+        uint64 zeroIndex = Channel.FindBackendIndex(
+            state.channelID,
+            state.outcome.backends
+        );
+        Dispute memory dispute = requireGetDispute(state.channelID[zeroIndex]);
         require(dispute.stateHash == hashState(state), "invalid channel state");
         if (dispute.phase != uint8(DisputePhase.CONCLUDED)) {
             dispute.phase = uint8(DisputePhase.CONCLUDED);
-            setDispute(state.channelID, dispute);
+            setDispute(state.channelID[zeroIndex], dispute);
         }
     }
 
@@ -544,7 +569,7 @@ contract Adjudicator {
      * @dev pushOutcome sets the outcome at the asset holders.
      */
     function pushOutcome(
-        bytes32 channel,
+        bytes32[] memory channel,
         Channel.Asset[] memory assets,
         Channel.Participant[] memory participants,
         uint256[][] memory outcome
@@ -555,7 +580,7 @@ contract Adjudicator {
                 if (asset.ethHolder != address(0)) {
                     // solhint-disable-next-line calls-loop
                     AssetHolder(asset.ethHolder).setOutcome(
-                        channel,
+                        channel[a],
                         participants,
                         outcome[a]
                     );

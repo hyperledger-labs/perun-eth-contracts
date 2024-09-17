@@ -38,7 +38,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
   }
 
   async function testDeposit(idx: number, amount: BigNumberish, cid: string) {
-    const fid = fundingID(cid, setup.parts[idx]);
+    const fid = fundingID(cid, setup.parts[idx].ethAddress);
     const oldBal = getBigInt(await setup.ah.holdings(fid));
     const depositTx = await setup.deposit(fid, amount, setup.recv[idx]);
 
@@ -105,11 +105,11 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
   }
 
   async function testWithdraw(idx: number, amount: BigNumberish, cid: string) {
-    const fid = fundingID(cid, setup.parts[idx]);
+    const fid = fundingID(cid, setup.parts[idx].ethAddress);
     let balanceBefore = await setup.balanceOf(setup.recv[idx]);
     const amountBigInt = getBigInt(amount);
     let authorization = new Authorization(cid, setup.parts[idx], setup.recv[idx], amountBigInt.toString());
-    let signature = await sign(authorization.encode(), setup.parts[idx]);
+    let signature = await sign(authorization.encode(), setup.parts[idx].ethAddress);
 
     const withdrawTx = await setup.ah.withdraw(authorization, signature);// { from: setup.txSender }
     const receipt = await withdrawTx.wait();
@@ -139,7 +139,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
 
 
     it("wrong msg.value", async () => {
-      const id = fundingID(setup.channelID, setup.parts[setup.A]);
+      const id = fundingID(setup.channelID, setup.parts[setup.A].ethAddress);
 
       try {
         await setup.ah.deposit(id, ethers.parseEther("2"), { value: ethers.parseEther("1") });
@@ -172,7 +172,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
       assert(await setup.ah.settled(setup.channelID) == false);
 
       const authorization = new Authorization(setup.channelID, setup.parts[setup.A], setup.recv[setup.A], finalBalance[setup.A].toString());
-      const signature = await sign(authorization.encode(), setup.parts[setup.A]);
+      const signature = await sign(authorization.encode(), setup.parts[setup.A].ethAddress);
 
       await expect(
         setup.ah.withdraw(authorization, signature)
@@ -226,7 +226,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
       expect(settled).to.be.true;
 
       for (let i = 0; i < setup.parts.length; i++) {
-        const id = fundingID(setup.channelID, setup.parts[i]);
+        const id = fundingID(setup.channelID, setup.parts[i].ethAddress);
         await assertHoldings(id, finalBalance[i]);
       }
     });
@@ -244,14 +244,14 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
 
   describeWithBlockRevert("Invalid withdrawals", () => {
     it("withdraw with invalid signature", async () => {
-      const authorization = new Authorization(setup.channelID, setup.parts[setup.A], setup.parts[setup.B], finalBalance[setup.A].toString());
-      const signature = await sign(authorization.encode(), setup.parts[setup.B]);
+      const authorization = new Authorization(setup.channelID, setup.parts[setup.A], setup.parts[setup.B].ethAddress, finalBalance[setup.A].toString());
+      const signature = await sign(authorization.encode(), setup.parts[setup.B].ethAddress);
       await expect(setup.ah.withdraw(authorization, signature)).to.be.revertedWith("signature verification failed"); //, { from: setup.txSender }
     });
 
     it("invalid balance", async () => {
-      const authorization = new Authorization(setup.channelID, setup.parts[setup.A], setup.parts[setup.B], ether(30).toString());
-      const signature = await sign(authorization.encode(), setup.parts[setup.A]);
+      const authorization = new Authorization(setup.channelID, setup.parts[setup.A], setup.parts[setup.B].ethAddress, ether(30).toString());
+      const signature = await sign(authorization.encode(), setup.parts[setup.A].ethAddress);
       await expect(setup.ah.withdraw(authorization, signature)).to.be.revertedWith("insufficient funds"); //, { from: setup.txSender }
     });
   })
@@ -266,7 +266,7 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
 
     it("A fails to overdraw with valid allowance", async () => {
       const authorization = new Authorization(setup.channelID, setup.parts[setup.A], setup.recv[setup.A], finalBalance[setup.A].toString());
-      const signature = await sign(authorization.encode(), setup.parts[setup.A]);
+      const signature = await sign(authorization.encode(), setup.parts[setup.A].ethAddress);
       await expect(setup.ah.withdraw(authorization, signature)).to.be.revertedWith("insufficient funds"); //, { from: setup.txSender }
     });
   })
@@ -309,13 +309,13 @@ export function genericAssetHolderTest(setup: AssetHolderSetup) {
 
       expect(await setup.ah.settled(channelID)).to.equal(true);
 
-      const id = fundingID(channelID, setup.parts[setup.A]);
+      const id = fundingID(channelID, setup.parts[setup.A].ethAddress);
       await assertHoldings(id, ether(1));
     });
 
     it("A fails to withdraw 2 eth after B's deposit refusal", async () => {
       let authorization = new Authorization(channelID, setup.parts[setup.A], setup.recv[setup.A], ether(2).toString());
-      let signature = await sign(authorization.encode(), setup.parts[setup.A]);
+      let signature = await sign(authorization.encode(), setup.parts[setup.A].ethAddress);
 
       await expect(
         setup.ah.withdraw(authorization, signature)

@@ -14,7 +14,6 @@
 
 import { sign } from "../src/lib/web3";
 import { ethers } from "hardhat";
-
 import { BigNumberish, keccak256, AbiCoder, getBytes } from "ethers";
 
 export enum DisputePhase { DISPUTE, FORCEEXEC, CONCLUDED }
@@ -24,8 +23,8 @@ export class Channel {
   state: State
 
   constructor(params: Params, state: State) {
-    this.params = params
-    this.state = state
+    this.params = params;
+    this.state = state;
   }
 
   async signed(): Promise<SignedChannel> {
@@ -51,19 +50,33 @@ export class SignedChannel extends Channel {
   }
 }
 
+export class Participant {
+  ethAddress: string;
+  ethPubKey: string;
+  ccAddress: string;
+  ccPubKey: string;
+
+  constructor(ethAddress: string, ethPubKey: string, ccAddress: string, ccPubKey: string) {
+    this.ethAddress = ethAddress;
+    this.ethPubKey = ethPubKey;
+    this.ccAddress = ccAddress;
+    this.ccPubKey = ccPubKey;
+  }
+}
+
 export class Params {
   challengeDuration: number;
   nonce: string;
   app: string;
-  participants: string[];
+  participants: Participant[];
   ledgerChannel: boolean;
   virtualChannel: boolean;
 
-  constructor(app: string, challengeDuration: number, nonce: string, parts: string[], ledgerChannel: boolean) {
+  constructor(app: string, challengeDuration: number, nonce: string, participants: Participant[], ledgerChannel: boolean) {
     this.app = app;
     this.challengeDuration = challengeDuration;
     this.nonce = nonce;
-    this.participants = parts;
+    this.participants = participants;
     this.ledgerChannel = ledgerChannel;
     this.virtualChannel = false;
   }
@@ -73,7 +86,12 @@ export class Params {
       app: this.app,
       challengeDuration: this.challengeDuration,
       nonce: this.nonce,
-      participants: this.participants,
+      participants: this.participants.map(p => ({
+        ethAddress: p.ethAddress,
+        ethPubKey: p.ethPubKey,
+        ccAddress: p.ccAddress,
+        ccPubKey: p.ccPubKey
+      })),
       ledgerChannel: this.ledgerChannel,
       virtualChannel: this.virtualChannel,
     };
@@ -83,13 +101,18 @@ export class Params {
     const abiCoder = AbiCoder.defaultAbiCoder();
 
     const paramsType = [
-      "tuple(uint256 challengeDuration, uint256 nonce, address[] participants, address app, bool ledgerChannel, bool virtualChannel)"
+      "tuple(uint256 challengeDuration, uint256 nonce, tuple(address ethAddress, bytes ethPubKey, bytes ccAddress, bytes ccPubKey)[] participants, address app, bool ledgerChannel, bool virtualChannel)"
     ];
 
     return abiCoder.encode(paramsType, [{
       challengeDuration: this.challengeDuration,
       nonce: this.nonce,
-      participants: this.participants,
+      participants: this.participants.map(p => ({
+        ethAddress: p.ethAddress,
+        ethPubKey: p.ethPubKey,
+        ccAddress: p.ccAddress,
+        ccPubKey: p.ccPubKey
+      })),
       app: this.app,
       ledgerChannel: this.ledgerChannel,
       virtualChannel: this.virtualChannel
@@ -99,18 +122,16 @@ export class Params {
   channelID() {
     return keccak256(this.encode());
   }
-
 }
 
-
 export class State {
-  channelID: string;
+  channelID: string[];
   version: string;
   outcome: Allocation;
   appData: string;
   isFinal: boolean;
 
-  constructor(_channelID: string, _version: string, _outcome: Allocation, _appData: string, _isFinal: boolean) {
+  constructor(_channelID: string[], _version: string, _outcome: Allocation, _appData: string, _isFinal: boolean) {
     this.channelID = _channelID;
     this.version = _version;
     this.outcome = _outcome;
@@ -131,7 +152,7 @@ export class State {
   encode() {
     const abiCoder = new ethers.AbiCoder();
     const stateType = [
-      'tuple(bytes32 channelID, uint64 version, tuple(tuple(uint256 chainID, address holder)[] assets, uint256[][] balances, tuple(bytes32 ID, uint256[] balances, uint16[] indexMap)[] locked) outcome, bytes appData, bool isFinal)'
+      'tuple(bytes32[] channelID, uint64 version, tuple(tuple(uint256 chainID, address ethHolder, bytes ccHolder)[] assets, uint256[] backends, uint256[][] balances, tuple(bytes32[] ID, uint256[] balances, uint16[] indexMap)[] locked) outcome, bytes appData, bool isFinal)'
     ];
 
     return abiCoder.encode(stateType, [{
@@ -145,47 +166,51 @@ export class State {
 
 
   incrementVersion() {
-    this.version = (Number(this.version) + 1).toString()
+    this.version = (Number(this.version) + 1).toString();
   }
 
-  async sign(signers: string[]): Promise<string[]> {
-    return Promise.all(signers.map(signer => sign(this.encode(), signer)))
+  async sign(signers: Participant[]): Promise<string[]> {
+    return Promise.all(signers.map(signer => sign(this.encode(), signer.ethAddress)));
   }
 }
 
 export class Asset {
   chainID: number;
-  holder: string;
+  ethHolder: string;
+  ccHolder: string;
 
-  constructor(_chainID: number, _holder: string) {
+  constructor(_chainID: number, _ethHolder: string, _ccHolder: string) {
     this.chainID = _chainID;
-    this.holder = _holder;
+    this.ethHolder = _ethHolder;
+    this.ccHolder = _ccHolder;
   }
 }
 
 export class Allocation {
   assets: Asset[];
+  backends: number[];
   balances: string[][];
   locked: SubAlloc[];
 
-  constructor(_assets: Asset[], _balances: string[][], _locked: SubAlloc[]) {
+  constructor(_assets: Asset[], _backends: number[], _balances: string[][], _locked: SubAlloc[]) {
     this.assets = _assets;
+    this.backends = _backends;
     this.balances = _balances;
     this.locked = _locked;
   }
 
   serialize() {
     let _locked: any[] = this.locked.map(e => e.serialize());
-    return { assets: this.assets, balances: this.balances, locked: _locked };
+    return { assets: this.assets, backends: this.backends, balances: this.balances, locked: _locked };
   }
 }
 
 export class SubAlloc {
-  ID: string;
+  ID: string[];
   balances: string[];
   indexMap: number[];
 
-  constructor(id: string, balances: string[], indexMap: number[]) {
+  constructor(id: string[], balances: string[], indexMap: number[]) {
     this.ID = id;
     this.balances = balances;
     this.indexMap = indexMap;
@@ -199,20 +224,19 @@ export class SubAlloc {
 export class Transaction extends Channel {
   sigs: string[];
 
-  constructor(parts: string[], balances: BigNumberish[], challengeDuration: number, nonce: string, asset: Asset, app: string) {
+  constructor(parts: Participant[], balances: BigNumberish[], challengeDuration: number, nonce: string, asset: Asset, backends: number[], app: string) {
     const params = new Params(app, challengeDuration, nonce, [parts[0], parts[1]], true);
-    const outcome = new Allocation([asset], [[balances[0].toString(), balances[1].toString()]], []);
-    const state = new State(params.channelID(), "0", outcome, "0x00", false);//"0x00"
+    const outcome = new Allocation([asset], backends, [[balances[0].toString(), balances[1].toString()]], []);
+    const state = new State([params.channelID()], "0", outcome, "0x00", false);
     super(params, state);
     this.sigs = [];
   }
 
-
-  async sign(parts: string[]) {
+  async sign(parts: Participant[]) {
     let stateEncoded = this.state.encode();
     this.sigs = await Promise.all(parts.map(async participant => {
       const provider = ethers.provider;
-      const signer = await provider.getSigner(participant);
+      const signer = await provider.getSigner(participant.ethAddress);
 
       const messageHash = keccak256(stateEncoded);
 
@@ -224,13 +248,14 @@ export class Transaction extends Channel {
 }
 
 
+
 export class Authorization {
   channelID: string;
-  participant: string;
+  participant: Participant;
   receiver: string;
   amount: string;
 
-  constructor(_channelID: string, _participant: string, _receiver: string, _amount: string) {
+  constructor(_channelID: string, _participant: Participant, _receiver: string, _amount: string) {
     this.channelID = _channelID;
     this.participant = _participant;
     this.receiver = _receiver;
@@ -240,7 +265,12 @@ export class Authorization {
   serialize() {
     return {
       channelID: this.channelID,
-      participant: this.participant,
+      participant: {
+        ethAddress: this.participant.ethAddress,
+        ethPubKey: this.participant.ethPubKey,
+        ccAddress: this.participant.ccAddress,
+        ccPubKey: this.participant.ccPubKey
+      },
       receiver: this.receiver,
       amount: this.amount
     };
@@ -249,13 +279,22 @@ export class Authorization {
   encode() {
     const abiCoder = AbiCoder.defaultAbiCoder();
     return abiCoder.encode(
-      ['bytes32', 'address', 'address', 'uint256'],
-      [
-        this.channelID,
-        this.participant,
-        this.receiver,
-        ethers.parseUnits(this.amount, 'wei')
-      ]
+        [
+          'tuple(bytes32 channelID, tuple(address ethAddress, bytes ethPubKey, bytes ccAddress, bytes ccPubKey) participant, address receiver, uint256 amount)'
+        ],
+        [
+          {
+            channelID: this.channelID,
+            participant: {
+              ethAddress: this.participant.ethAddress,
+              ethPubKey: this.participant.ethPubKey,
+              ccAddress: this.participant.ccAddress,
+              ccPubKey: this.participant.ccPubKey
+            },
+            receiver: this.receiver,
+            amount: ethers.parseUnits(this.amount, 'wei')
+          }
+        ]
     );
   }
 }
