@@ -125,7 +125,7 @@ contract Adjudicator {
                 locked[s],
                 _channel.state
             );
-            require(Channel.AreBytes32ArraysEqual(subAlloc.ID, _state.channelID), "invalid sub-channel id");
+            require(Channel.areBytes32ArraysEqual(subAlloc.ID, _state.channelID), "invalid sub-channel id");
 
             uint256[] memory _outcome;
             (_outcome, nextIndex) = registerRecursive(
@@ -163,7 +163,7 @@ contract Adjudicator {
         }
 
         // If registered, require newer version and refutation timeout not passed.
-        (Dispute memory dispute, bool registered) = getDispute(state.channelID[Channel.FindBackendIndex(
+        (Dispute memory dispute, bool registered) = getDispute(state.channelID[Channel.findBackendIndex(
             state.channelID,
             state.outcome.backends
         )]);
@@ -210,7 +210,7 @@ contract Adjudicator {
         uint256 actorIdx,
         bytes memory sig
     ) external {
-        Dispute memory dispute = requireGetDispute(state.channelID[Channel.FindBackendIndex(
+        Dispute memory dispute = requireGetDispute(state.channelID[Channel.findBackendIndex(
             state.channelID,
             state.outcome.backends
         )]);
@@ -296,7 +296,7 @@ contract Adjudicator {
         Channel.validateSignatures(params, state, sigs);
 
         // If registered, require not concluded.
-        (Dispute memory dispute, bool registered) = getDispute(state.channelID[Channel.FindBackendIndex(
+        (Dispute memory dispute, bool registered) = getDispute(state.channelID[Channel.findBackendIndex(
             state.channelID,
             state.outcome.backends
         )]);
@@ -347,7 +347,7 @@ contract Adjudicator {
         Channel.Params memory params,
         Channel.State memory state
     ) internal pure {
-        uint256 zeroIndex = Channel.FindBackendIndex(
+        uint256 zeroIndex = Channel.findBackendIndex(
             state.channelID,
             state.outcome.backends
         );
@@ -366,7 +366,7 @@ contract Adjudicator {
         Channel.State memory state,
         DisputePhase disputePhase
     ) internal {
-        uint256 zeroIndex = Channel.FindBackendIndex(
+        uint256 zeroIndex = Channel.findBackendIndex(
             state.channelID,
             state.outcome.backends
         );
@@ -472,7 +472,7 @@ contract Adjudicator {
      * Reverts if the channel is already concluded.
      */
     function concludeSingle(Channel.State memory state) internal {
-        uint64 zeroIndex = Channel.FindBackendIndex(
+        uint64 zeroIndex = Channel.findBackendIndex(
             state.channelID,
             state.outcome.backends
         );
@@ -527,7 +527,7 @@ contract Adjudicator {
         for (uint256 i = 0; i < locked.length; i++) {
             Channel.SubAlloc memory subAlloc = locked[i];
             Channel.State memory subState = subStates[nextIndex++];
-            require(Channel.AreBytes32ArraysEqual(subAlloc.ID, subState.channelID), "invalid subchannel id");
+            require(Channel.areBytes32ArraysEqual(subAlloc.ID, subState.channelID), "invalid subchannel id");
 
             uint256[][] memory subOutcome;
             (subOutcome, nextIndex) = forceConcludeRecursive(
@@ -553,7 +553,7 @@ contract Adjudicator {
      * Reverts if the channel is not registered.
      */
     function forceConcludeSingle(Channel.State memory state) internal {
-        uint64 zeroIndex = Channel.FindBackendIndex(
+        uint64 zeroIndex = Channel.findBackendIndex(
             state.channelID,
             state.outcome.backends
         );

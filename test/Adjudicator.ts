@@ -257,35 +257,29 @@ describe("Adjudicator", function () {
             const account2 = signers[3];
             parts = [new Participant(await account1.getAddress(), zeroAddress, zeroAddress, zeroAddress), new Participant(await account2.getAddress(), zeroAddress, zeroAddress, zeroAddress)];
             const AdjudicatorFactory = await ethers.getContractFactory("Adjudicator") as Adjudicator__factory;
-            console.log("before deployment");
             adj = await AdjudicatorFactory.deploy();
-            console.log("after deployment");
 
             await adj.waitForDeployment();
             adjAddress = await adj.getAddress();
-            console.log("adjAddress", adjAddress);
 
             const AssetHolderETHFactory = await ethers.getContractFactory("AssetHolderETH") as AssetHolderETH__factory;
             ah = await AssetHolderETHFactory.deploy(adjAddress);
-            console.log("before ah deployment");
             await ah.waitForDeployment();
+
             ahAddress = await ah.getAddress();
-            console.log("ahAddress", ahAddress);
             adjInterface = new ethers.Interface(Adjudicator__factory.abi) as AdjudicatorInterface;
             const TrivialAppFactory = await ethers.getContractFactory("TrivialApp") as TrivialApp__factory;
             appInstance = await TrivialAppFactory.deploy();
             await appInstance.waitForDeployment();
             appAddress = await appInstance.getAddress();
-            console.log("appAddress", appAddress);
+
             const chainIDBigInt = await ethers.provider.getNetwork().then(n => n.chainId);
             const chainID = Number(chainIDBigInt);
             asset = new Asset(chainID, await ah.getAddress(), zeroAddress);
             backend = [1];
 
             params = new Params(appAddress, timeout, nonce, [parts[A], parts[B]], true);
-            console.log("before calcID");
             channelID = [params.channelID()];
-            console.log("channelID", channelID);
 
         });
 

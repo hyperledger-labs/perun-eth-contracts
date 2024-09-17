@@ -127,13 +127,13 @@ library Channel {
         SubAlloc memory a,
         SubAlloc memory b
     ) internal pure {
-        require(AreBytes32ArraysEqual(a.ID, b.ID), "SubAlloc: unequal ID");
+        require(areBytes32ArraysEqual(a.ID, b.ID), "SubAlloc: unequal ID");
         Array.requireEqualUint256Array(a.balances, b.balances);
         Array.requireEqualUint16Array(a.indexMap, b.indexMap);
     }
 
-    // @dev AreBytes32ArraysEqual checks if two arrays of bytes32 are equal.
-    function AreBytes32ArraysEqual(bytes32[] memory arr1, bytes32[] memory arr2) internal pure returns (bool) {
+    // @dev areBytes32ArraysEqual checks if two arrays of bytes32 are equal.
+    function areBytes32ArraysEqual(bytes32[] memory arr1, bytes32[] memory arr2) internal pure returns (bool) {
         if (arr1.length != arr2.length) {
             return false;
         }
@@ -146,11 +146,11 @@ library Channel {
     }
 
     /**
-     * @dev FindBackendIndex finds out which of the channelIDs corresponds to the ethereum encoded channelID.
+     * @dev findBackendIndex finds out which of the channelIDs corresponds to the ethereum encoded channelID.
      * Reverts if none of the channelIDs has a zero backend.
      * Optimized for the common case of only one zero backend.
      */
-    function FindBackendIndex(bytes32[] memory channel, uint256[] memory backends) internal pure returns (uint64) {
+    function findBackendIndex(bytes32[] memory channel, uint256[] memory backends) internal pure returns (uint64) {
         require(channel.length == backends.length, "Array lengths mismatch");
 
         if (backends[0] == 1) return 0;
