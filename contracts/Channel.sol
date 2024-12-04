@@ -14,8 +14,8 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-pragma solidity ^0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.15;
+pragma abicoder v2;
 
 import "./Sig.sol";
 import "./Array.sol";
@@ -32,9 +32,7 @@ library Channel {
 
     struct Participant {
         address ethAddress;
-        bytes ethPubKey;
         bytes ccAddress;
-        bytes ccPubKey;
     }
 
     struct State {
@@ -87,7 +85,7 @@ library Channel {
             params.participants.length == sigs.length,
             "signatures length mismatch"
         );
-        for (uint256 i = 0; i < sigs.length; i++) {
+        for (uint256 i = 0; i < sigs.length; ++i) {
             require(
                 Sig.verify(
                     encodedState,
@@ -117,7 +115,7 @@ library Channel {
         SubAlloc[] memory b
     ) internal pure {
         require(a.length == b.length, "SubAlloc[]: unequal length");
-        for (uint i = 0; i < a.length; i++) {
+        for (uint i = 0; i < a.length; ++i) {
             requireEqualSubAlloc(a[i], b[i]);
         }
     }
@@ -137,7 +135,7 @@ library Channel {
         if (arr1.length != arr2.length) {
             return false;
         }
-        for (uint i = 0; i < arr1.length; i++) {
+        for (uint i = 0; i < arr1.length; ++i) {
             if (arr1[i] != arr2[i]) {
                 return false;
             }
@@ -161,11 +159,11 @@ library Channel {
 
     /// @dev Asserts that a and b are equal.
     function requireEqualAsset(Asset memory a, Asset memory b) internal pure {
-        require(a.chainID == b.chainID, "Asset: unequal chainID");
-        require(a.ethHolder == b.ethHolder, "Asset: unequal ethHolder");
+        require(a.chainID == b.chainID, "unequal chainID");
+        require(a.ethHolder == b.ethHolder, "unequal ethHolder");
         require(
             keccak256(a.ccHolder) == keccak256(b.ccHolder),
-            "Asset: unequal ccHolder"
+            "unequal ccHolder"
         );
     }
 
@@ -175,7 +173,7 @@ library Channel {
         Channel.Asset[] memory b
     ) internal pure {
         require(a.length == b.length, "Asset[]: unequal length");
-        for (uint i = 0; i < a.length; i++) {
+        for (uint i = 0; i < a.length; ++i) {
             requireEqualAsset(a[i], b[i]);
         }
     }

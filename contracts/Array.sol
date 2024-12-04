@@ -1,4 +1,4 @@
-// Copyright 2021 - See NOTICE file for copyright holders.
+// Copyright 2024 - See NOTICE file for copyright holders.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,13 +14,12 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.15;
 
 import "../vendor/openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
 
 /// @notice Array is a library for array operations.
 library Array {
-    using SafeMath for uint256;
 
     /// @dev Asserts that a and b are equal.
     function requireEqualUint16Array(
@@ -30,7 +29,7 @@ library Array {
     internal pure
     {
         require(a.length == b.length, "uint16[]: unequal length");
-        for (uint i = 0; i < a.length; i++) {
+        for (uint i = 0; i < a.length; ++i) {
             require(a[i] == b[i], "uint16[]: unequal item");
         }
     }
@@ -43,7 +42,7 @@ library Array {
     internal pure
     {
         require(a.length == b.length, "uint256[]: unequal length");
-        for (uint i = 0; i < a.length; i++) {
+        for (uint i = 0; i < a.length; ++i) {
             require(a[i] == b[i], "uint256[]: unequal item");
         }
     }
@@ -56,8 +55,8 @@ library Array {
     )
     internal pure
     {
-        for (uint i = 0; i < a.length; i++) {
-            a[i] = a[i].add(b[i]);
+        for (uint i = 0; i < a.length; ++i) {
+            a[i] = a[i] + b[i];
         }
     }
 
@@ -70,10 +69,10 @@ library Array {
     returns (uint256[] memory b)
     {
         b = new uint256[](a.length);
-        for (uint i = 0; i < a.length; i++) {
+        for (uint i = 0; i < a.length; ++i) {
             uint256[] memory _a = a[i];
-            for (uint j = 0; j < _a.length; j++) {
-                b[i] = b[i].add(_a[j]);
+            for (uint j = 0; j < _a.length; ++j) {
+                b[i] = b[i] + _a[j];
             }
         }
     }

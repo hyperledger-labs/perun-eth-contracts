@@ -1,4 +1,4 @@
-// Copyright 2020 - See NOTICE file for copyright holders.
+// Copyright 2024 - See NOTICE file for copyright holders.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,11 +14,10 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-pragma solidity ^0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.15;
+pragma abicoder v2;
 
 import "../vendor/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import "../vendor/openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
 import "./AssetHolder.sol";
 
 /**
@@ -29,7 +28,6 @@ import "./AssetHolder.sol";
  * at least the amount that should be deposited.
  */
 contract AssetHolderERC20 is AssetHolder {
-	using SafeMath for uint256;
 
 	IERC20 public immutable token;
 

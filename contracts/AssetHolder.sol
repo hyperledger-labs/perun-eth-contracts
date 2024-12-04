@@ -14,10 +14,9 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-pragma solidity ^0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.15;
+pragma abicoder v2;
 
-import "../vendor/openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
 import "./Sig.sol";
 import "./Channel.sol";
 
@@ -27,7 +26,6 @@ import "./Channel.sol";
  * Perun state channel.
  */
 abstract contract AssetHolder {
-    using SafeMath for uint256;
 
     /**
      * @dev WithdrawalAuth authorizes an on-chain public key to withdraw from an ephemeral key.
@@ -111,19 +109,19 @@ abstract contract AssetHolder {
         uint256 sumOutcome = 0;
 
         bytes32[] memory fundingIDs = new bytes32[](parts.length);
-        for (uint256 i = 0; i < parts.length; i++) {
+        for (uint256 i = 0; i < parts.length; ++i) {
             bytes32 id = calcFundingID(channelID, parts[i].ethAddress);
             // Save calculated ids to save gas.
             fundingIDs[i] = id;
             // Compute old balances.
-            sumHeld = sumHeld.add(holdings[id]);
+            sumHeld = sumHeld + holdings[id];
             // Compute new balances.
-            sumOutcome = sumOutcome.add(newBals[i]);
+            sumOutcome = sumOutcome + newBals[i];
         }
 
         // We allow overfunding channels, who overfunds looses their funds.
         if (sumHeld >= sumOutcome) {
-            for (uint256 i = 0; i < parts.length; i++) {
+            for (uint256 i = 0; i < parts.length; ++i) {
                 holdings[fundingIDs[i]] = newBals[i];
             }
         }
@@ -146,7 +144,7 @@ abstract contract AssetHolder {
      */
     function deposit(bytes32 fundingID, uint256 amount) external payable {
         depositCheck(fundingID, amount);
-        holdings[fundingID] = holdings[fundingID].add(amount);
+        holdings[fundingID] = holdings[fundingID] + amount;
         depositEnact(fundingID, amount);
         emit Deposited(fundingID, amount);
     }
@@ -186,7 +184,7 @@ abstract contract AssetHolder {
         );
         require(holdings[id] >= authorization.amount, "insufficient funds");
         withdrawCheck(authorization, signature);
-        holdings[id] = holdings[id].sub(authorization.amount);
+        holdings[id] = holdings[id] - authorization.amount;
         withdrawEnact(authorization, signature);
         emit Withdrawn(id, authorization.amount, authorization.receiver);
     }

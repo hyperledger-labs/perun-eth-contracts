@@ -42,7 +42,7 @@ export class AssetHolderSetup {
         this.unfundedChannelID = keccak256(ethers.randomBytes(32));
         this.txSender = accounts[5];
         this.adj = accounts[9];
-        this.parts = [new Participant(accounts[1], zeroAddress, zeroAddress, zeroAddress), new Participant(accounts[2], zeroAddress, zeroAddress, zeroAddress)];
+        this.parts = [new Participant(accounts[1], zeroAddress), new Participant(accounts[2], zeroAddress)];
         this.recv = [accounts[3], accounts[4]];
         this.accounts = accounts;
         this.ah = ah;
@@ -50,4 +50,10 @@ export class AssetHolderSetup {
         this.deposit = deposit;
         this.balanceOf = balanceOf;
     }
+}
+function getAddressFromPrivateKey(privateKey: string): string {
+    // Create a wallet from the private key
+    const wallet = new ethers.Wallet(privateKey);
+    // Return the Ethereum address
+    return wallet.address;
 }

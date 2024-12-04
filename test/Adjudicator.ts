@@ -164,7 +164,7 @@ describe("Adjudicator", function () {
         const channelIDBytes: BytesLike = getBytes(channelID);
         const dispute = await adj.disputes(channelIDBytes, { gasLimit: 500000 });
 
-        const disputePhaseIndex = 4
+        const disputePhaseIndex = 3
         expect(BigInt(dispute[disputePhaseIndex])).to.equal(BigInt(phase), "wrong channel phase");
     }
 
@@ -255,7 +255,7 @@ describe("Adjudicator", function () {
             adjAccount = await signers[0].getAddress();
             const account1 = signers[2];
             const account2 = signers[3];
-            parts = [new Participant(await account1.getAddress(), zeroAddress, zeroAddress, zeroAddress), new Participant(await account2.getAddress(), zeroAddress, zeroAddress, zeroAddress)];
+            parts = [new Participant(await account1.getAddress(), zeroAddress), new Participant(await account2.getAddress(), zeroAddress)];
             const AdjudicatorFactory = await ethers.getContractFactory("Adjudicator") as Adjudicator__factory;
             adj = await AdjudicatorFactory.deploy();
 
@@ -345,6 +345,85 @@ describe("Adjudicator", function () {
             });
         });
 
+        it("sign state", async () => {
+
+            function hexStringToUint8Array(hex: string): Uint8Array {
+                // Remove '0x' prefix if it exists
+                if (hex.startsWith('0x')) {
+                    hex = hex.slice(2);
+                }
+
+                // Ensure the hex string has an even length
+                if (hex.length % 2 !== 0) {
+                    throw new Error("Invalid hex string: must have an even length");
+                }
+
+                // Create a new Uint8Array with half the length of the hex string
+                const byteArray = new Uint8Array(hex.length / 2);
+
+                for (let i = 0; i < hex.length; i += 2) {
+                    // Parse each pair of hex digits as a byte
+                    byteArray[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+                }
+
+                return byteArray;
+            }
+            const balance1 = [["100", "200"], ["150", "250"]];
+            const app_data = new Uint8Array(40);
+            const app = Array.from(app_data).map(byte => byte.toString(16).padStart(2, '0')) // Convert each byte to hex
+                .join('');
+            console.log("App: ", app);
+            const challengeDuration = 10;
+            const nonce_bytes = new Uint8Array([
+                9, 244, 173, 114, 193, 43, 175, 218, 114, 217, 245, 67, 107, 125, 253, 234, 17, 238, 97, 226, 231, 94, 84, 22, 201, 11, 210, 143, 106, 19, 69, 134
+            ]);
+            let nonce1 = BigInt(0);
+            for (let byte of nonce_bytes) {
+                nonce1 = (nonce1 << 8n) | BigInt(byte); // Shift left and add the new byte
+            }
+            console.log("Nonce: ", nonce1);
+            const params = new Params(app, challengeDuration, nonce1.toString(), [parts[0], parts[1]], true);
+            console.log(parts[0], parts[1]);
+            const ccHolder1 = "0x000000120000000104cadb4a570fd2e4652e814101509912cce6c9a2325d6eec8d7100caf859f3e0";
+            const ccHolder2 = "0x0000001200000001f65bd4d892e052cedba1fd62974e564ffa9226ca720624f331c36770bea46c44";
+
+            // Convert ccHolder values to Uint8Array (if they are Base64)
+            // const ccHolderBytes1 = hexStringToUint8Array(ccHolder1);
+            // const ccHolderBytes2 = hexStringToUint8Array(ccHolder2);
+            const asset1 = new Asset(0, zeroAddress, ccHolder1);
+            const asset2 = new Asset(0, zeroAddress, ccHolder2);
+            const backends = [2, 2]
+            const outcome = new Allocation([asset1, asset2], backends, balance1, []);
+            const channelID_bytes = new Uint8Array([
+                108, 125, 243, 242, 134, 65, 100, 126, 176, 109, 212, 10, 120, 81, 19, 191, 61, 90, 178, 31, 10, 70, 92, 233, 1, 91, 11, 33, 243, 51, 221, 150
+            ]);
+            const channelID = Array.from(channelID_bytes)
+                .map(byte => byte.toString(16).padStart(2, '0')) // Convert each byte to hex
+                .join('');
+            console.log("ChannelID: ", channelID);
+            const state = new State(["0x"+channelID, "0x"+channelID], "0", outcome, "0x"+app, false);
+            const tx = new Transaction(parts, balance, timeout, nonce, asset, backend, appAddress);
+            tx.state = state;
+            tx.params = params;
+            await tx.sign(parts);
+
+            const stateEncoded = tx.state.encode();
+            const messageHash = keccak256(stateEncoded);
+            const messageHashBytes = getBytes(messageHash);
+            console.log("State: ", state);
+            console.log("Asset1: ", asset1);
+            console.log("Asset2: ", asset2);
+            console.log("Balance: ", balance1);
+            console.log("Bytes:", messageHashBytes);
+            const hash = Array.from(messageHashBytes)
+                .map(byte => byte.toString(16).padStart(2, '0')) // Convert each byte to hex
+                .join('');
+            console.log("Encoded State:", hash);
+            console.log("Sig:", tx.sigs);
+            console.log("Sig1: ", hexStringToUint8Array(tx.sigs[0]));
+            console.log("Sig2: ", hexStringToUint8Array(tx.sigs[1]))
+            console.log("Address: ", parts);
+        });
 
         it("register with validState twice does not revert", async () => {
             let tx = new Transaction(parts, balance, timeout, nonce, asset, backend, appAddress);
@@ -498,7 +577,7 @@ describe("Adjudicator", function () {
 
             await tx.sign(parts);
 
-            await expect(register(tx)).to.be.revertedWith("cannot have locked funds");
+            await expect(register(tx)).to.be.revertedWith("funds locked");
         });
 
         itWithBlockRevert("register succeeds", async () => {
@@ -558,7 +637,7 @@ describe("Adjudicator", function () {
                 },
                 desc: "concludeFinal with subchannels fails",
                 shouldRevert: true,
-                revertReason: "cannot have sub-channels",
+                revertReason: "has sub-channels",
             },
             {
                 prepare: async (tx: Transaction) => { await tx.sign(parts) },
@@ -570,7 +649,7 @@ describe("Adjudicator", function () {
                 prepare: async (tx: Transaction) => { await tx.sign(parts) },
                 desc: "concludeFinal with valid state twice fails",
                 shouldRevert: true,
-                revertReason: "channel already concluded",
+                revertReason: "concluded already",
             },
         ]
 
@@ -705,13 +784,13 @@ describe("Adjudicator", function () {
 
             subchannel.state.outcome.assets = [new Asset(asset.chainID, zeroAddress, zeroAddress)];
             let res = registerChannel(ledgerChannel, [subchannel]);
-            await expect(res).to.be.revertedWith("Asset: unequal ethHolder");
+            await expect(res).to.be.revertedWith("unequal ethHolder");
         });
 
         it("register with wrong number of subchannels fails", async () => {
             let invalidSubchannels = subchannels.slice(-1);
             let res = registerChannel(ledgerChannel, invalidSubchannels);
-            await expect(res).to.be.revertedWith("subChannels: too short");
+            await expect(res).to.be.revertedWith("subChannels too short");
         });
 
         it("register with wrong subchannel ID fails", async () => {
@@ -786,7 +865,7 @@ describe("Adjudicator", function () {
             let tmp = subchannels[0].state.version; // save state
             subchannels[0].state.version += "1"; // modify state
             let res = concludeWithSubchannels(ledgerChannel, subchannels);
-            await expect(res).to.be.revertedWith("invalid channel state");
+            await expect(res).to.be.revertedWith("invalid state");
             subchannels[0].state.version = tmp; // restore state
         });
 
@@ -1349,7 +1428,7 @@ describe("Adjudicator", function () {
             const txProgressed = prepareTransaction(tx.params.nonce);
             txProgressed.state.incrementVersion();
 
-            await expect(conclude(txProgressed)).to.be.revertedWith("invalid channel state");
+            await expect(conclude(txProgressed)).to.be.revertedWith("invalid state");
         });
 
 

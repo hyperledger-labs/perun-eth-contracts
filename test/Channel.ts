@@ -52,15 +52,11 @@ export class SignedChannel extends Channel {
 
 export class Participant {
   ethAddress: string;
-  ethPubKey: string;
   ccAddress: string;
-  ccPubKey: string;
 
-  constructor(ethAddress: string, ethPubKey: string, ccAddress: string, ccPubKey: string) {
+  constructor(ethAddress: string, ccAddress: string) {
     this.ethAddress = ethAddress;
-    this.ethPubKey = ethPubKey;
     this.ccAddress = ccAddress;
-    this.ccPubKey = ccPubKey;
   }
 }
 
@@ -88,9 +84,7 @@ export class Params {
       nonce: this.nonce,
       participants: this.participants.map(p => ({
         ethAddress: p.ethAddress,
-        ethPubKey: p.ethPubKey,
-        ccAddress: p.ccAddress,
-        ccPubKey: p.ccPubKey
+        ccAddress: p.ccAddress
       })),
       ledgerChannel: this.ledgerChannel,
       virtualChannel: this.virtualChannel,
@@ -101,7 +95,7 @@ export class Params {
     const abiCoder = AbiCoder.defaultAbiCoder();
 
     const paramsType = [
-      "tuple(uint256 challengeDuration, uint256 nonce, tuple(address ethAddress, bytes ethPubKey, bytes ccAddress, bytes ccPubKey)[] participants, address app, bool ledgerChannel, bool virtualChannel)"
+      "tuple(uint256 challengeDuration, uint256 nonce, tuple(address ethAddress, bytes ccAddress)[] participants, address app, bool ledgerChannel, bool virtualChannel)"
     ];
 
     return abiCoder.encode(paramsType, [{
@@ -109,9 +103,7 @@ export class Params {
       nonce: this.nonce,
       participants: this.participants.map(p => ({
         ethAddress: p.ethAddress,
-        ethPubKey: p.ethPubKey,
-        ccAddress: p.ccAddress,
-        ccPubKey: p.ccPubKey
+        ccAddress: p.ccAddress
       })),
       app: this.app,
       ledgerChannel: this.ledgerChannel,
@@ -241,8 +233,7 @@ export class Transaction extends Channel {
       const messageHash = keccak256(stateEncoded);
 
       const messageHashBytes = getBytes(messageHash);
-      const signature = await signer.signMessage(messageHashBytes);
-      return signature;
+      return await signer.signMessage(messageHashBytes);
     }));
   }
 }
@@ -267,9 +258,7 @@ export class Authorization {
       channelID: this.channelID,
       participant: {
         ethAddress: this.participant.ethAddress,
-        ethPubKey: this.participant.ethPubKey,
         ccAddress: this.participant.ccAddress,
-        ccPubKey: this.participant.ccPubKey
       },
       receiver: this.receiver,
       amount: this.amount
@@ -280,16 +269,14 @@ export class Authorization {
     const abiCoder = AbiCoder.defaultAbiCoder();
     return abiCoder.encode(
         [
-          'tuple(bytes32 channelID, tuple(address ethAddress, bytes ethPubKey, bytes ccAddress, bytes ccPubKey) participant, address receiver, uint256 amount)'
+          'tuple(bytes32 channelID, tuple(address ethAddress, bytes ccAddress) participant, address receiver, uint256 amount)'
         ],
         [
           {
             channelID: this.channelID,
             participant: {
               ethAddress: this.participant.ethAddress,
-              ethPubKey: this.participant.ethPubKey,
               ccAddress: this.participant.ccAddress,
-              ccPubKey: this.participant.ccPubKey
             },
             receiver: this.receiver,
             amount: ethers.parseUnits(this.amount, 'wei')

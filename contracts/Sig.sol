@@ -1,4 +1,4 @@
-// Copyright 2019 - See NOTICE file for copyright holders.
+// Copyright 2024 - See NOTICE file for copyright holders.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.15;
 
 import "../vendor/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
