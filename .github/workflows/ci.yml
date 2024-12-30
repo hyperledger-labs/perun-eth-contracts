@@ -30,27 +30,16 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Install Python dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip python3.12-dev build-essential
+
       - name: Install dependencies
         run: yarn
 
       - name: Lint
         run: npx solhint 'contracts/**/*.sol'
-
-      - name: Install Hardhat and other dependencies
-        run: |
-          yarn add --dev hardhat
-          yarn add --dev ts-node
-          yarn add --dev @nomicfoundation/hardhat-toolbox
-          yarn add --dev @nomicfoundation/hardhat-chai-matchers@^2.0.0
-          yarn add --dev @nomicfoundation/hardhat-ethers@^3.0.0
-          yarn add --dev @nomicfoundation/hardhat-ignition-ethers@^0.15.0
-          yarn add --dev @nomicfoundation/hardhat-network-helpers@^1.0.0
-          yarn add --dev @nomicfoundation/hardhat-verify@^2.0.0
-          yarn add --dev @typechain/ethers-v6@^0.5.0
-          yarn add --dev @typechain/hardhat@^9.0.0
-          yarn add --dev hardhat-gas-reporter@^1.0.8
-          yarn add --dev @nomicfoundation/hardhat-ignition@^0.15.5
-          yarn add --dev @nomicfoundation/ignition-core@^0.15.5
 
       - name: Compile
         run: npx hardhat compile
