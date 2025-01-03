@@ -46,11 +46,12 @@ contract AssetHolderETH is AssetHolder {
      * @notice Should not be called directly but only by the parent AssetHolder.
      * @dev Withdraws ethereum for channel participant authorization.participant
      * to authorization.receiver.
-     * @param authorization Withdrawal Authorization to authorize token transer
+     * @param authorization Withdrawal Authorization to authorize token transfer
      * from a channel participant to an on-chain receiver.
      */
     //slither-disable-next-line dead-code
     function withdrawEnact(WithdrawalAuth calldata authorization, bytes calldata) internal override {
+        //slither-disable-next-line arbitrary-send-eth
         authorization.receiver.transfer(authorization.amount);
     }
 }

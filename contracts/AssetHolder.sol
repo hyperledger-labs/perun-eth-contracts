@@ -61,7 +61,7 @@ abstract contract AssetHolder {
      * @notice Address of the adjudicator contract that can call setOutcome.
      * @dev Set by the constructor.
      */
-    address public adjudicator;
+    address public immutable adjudicator;
 
     /**
      * @notice The onlyAdjudicator modifier specifies functions that can only be called from the adjudicator contract.
