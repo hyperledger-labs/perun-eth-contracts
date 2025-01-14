@@ -36,7 +36,7 @@ library Channel {
     }
 
     struct State {
-        bytes32[] channelID;
+        bytes32 channelID;
         uint64 version;
         Allocation outcome;
         bytes appData;
@@ -59,7 +59,7 @@ library Channel {
 
     struct SubAlloc {
         // ID is the channelID of the subchannel
-        bytes32[] ID; // solhint-disable-line var-name-mixedcase
+        bytes32 ID; // solhint-disable-line var-name-mixedcase
         // balances holds the total balance of the subchannel of every asset.
         uint256[] balances;
         // indexMap maps each sub-channel participant to a parent channel
@@ -125,36 +125,9 @@ library Channel {
         SubAlloc memory a,
         SubAlloc memory b
     ) internal pure {
-        require(areBytes32ArraysEqual(a.ID, b.ID), "SubAlloc: unequal ID");
+        require(a.ID == b.ID, "SubAlloc: unequal ID");
         Array.requireEqualUint256Array(a.balances, b.balances);
         Array.requireEqualUint16Array(a.indexMap, b.indexMap);
-    }
-
-    // @dev areBytes32ArraysEqual checks if two arrays of bytes32 are equal.
-    function areBytes32ArraysEqual(bytes32[] memory arr1, bytes32[] memory arr2) internal pure returns (bool) {
-        if (arr1.length != arr2.length) {
-            return false;
-        }
-        for (uint i = 0; i < arr1.length; ++i) {
-            if (arr1[i] != arr2[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * @dev findBackendIndex finds out which of the channelIDs corresponds to the ethereum encoded channelID.
-     * Reverts if none of the channelIDs has a zero backend.
-     * Optimized for the common case of only one zero backend.
-     */
-    function findBackendIndex(bytes32[] memory channel, uint256[] memory backends) internal pure returns (uint64) {
-        require(channel.length == backends.length, "Array lengths mismatch");
-
-        if (backends[0] == 1) return 0;
-        if (backends.length > 1 && backends[1] == 1) return 1;
-
-        return 0;
     }
 
     /// @dev Asserts that a and b are equal.
