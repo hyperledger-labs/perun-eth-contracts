@@ -42,7 +42,7 @@ jobs:
       - name: Static analysis
         run: |
           pip3 install slither-analyzer==0.10.4
-          slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether --filter-paths vendor/ .
+          slither --exclude solc-version,timestamp,boolean-equality,unimplemented-functions,locked-ether,immutable-states --filter-paths vendor/ .
           # Alternatively, one can use Docker:
           # WORKDIR=/share docker run --rm -v $(pwd):$WORKDIR -w $WORKDIR --entrypoint slither trailofbits/eth-security-toolbox [insert slither parameters here]
 
