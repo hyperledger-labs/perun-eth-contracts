@@ -117,13 +117,13 @@ export class Params {
 }
 
 export class State {
-  channelID: string[];
+  channelID: string;
   version: string;
   outcome: Allocation;
   appData: string;
   isFinal: boolean;
 
-  constructor(_channelID: string[], _version: string, _outcome: Allocation, _appData: string, _isFinal: boolean) {
+  constructor(_channelID: string, _version: string, _outcome: Allocation, _appData: string, _isFinal: boolean) {
     this.channelID = _channelID;
     this.version = _version;
     this.outcome = _outcome;
@@ -144,7 +144,7 @@ export class State {
   encode() {
     const abiCoder = new ethers.AbiCoder();
     const stateType = [
-      'tuple(bytes32[] channelID, uint64 version, tuple(tuple(uint256 chainID, address ethHolder, bytes ccHolder)[] assets, uint256[] backends, uint256[][] balances, tuple(bytes32[] ID, uint256[] balances, uint16[] indexMap)[] locked) outcome, bytes appData, bool isFinal)'
+      'tuple(bytes32 channelID, uint64 version, tuple(tuple(uint256 chainID, address ethHolder, bytes ccHolder)[] assets, uint256[] backends, uint256[][] balances, tuple(bytes32 ID, uint256[] balances, uint16[] indexMap)[] locked) outcome, bytes appData, bool isFinal)'
     ];
 
     return abiCoder.encode(stateType, [{
@@ -198,11 +198,11 @@ export class Allocation {
 }
 
 export class SubAlloc {
-  ID: string[];
+  ID: string;
   balances: string[];
   indexMap: number[];
 
-  constructor(id: string[], balances: string[], indexMap: number[]) {
+  constructor(id: string, balances: string[], indexMap: number[]) {
     this.ID = id;
     this.balances = balances;
     this.indexMap = indexMap;
@@ -219,7 +219,7 @@ export class Transaction extends Channel {
   constructor(parts: Participant[], balances: BigNumberish[], challengeDuration: number, nonce: string, asset: Asset, backends: number[], app: string) {
     const params = new Params(app, challengeDuration, nonce, [parts[0], parts[1]], true);
     const outcome = new Allocation([asset], backends, [[balances[0].toString(), balances[1].toString()]], []);
-    const state = new State([params.channelID()], "0", outcome, "0x00", false);
+    const state = new State(params.channelID(), "0", outcome, "0x00", false);
     super(params, state);
     this.sigs = [];
   }

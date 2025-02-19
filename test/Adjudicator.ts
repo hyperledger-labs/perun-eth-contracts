@@ -54,9 +54,9 @@ describe("Adjudicator", function () {
     const timeout = 60;
     const nonce = "0xB0B0FACE";
     let params: Params;
-    let channelID = [""];
+    let channelID = "";
     const A = 0, B = 1;
-    const dummySubAlloc = new SubAlloc([keccak256(toBeHex(0))], [], [0, 1]);
+    const dummySubAlloc = new SubAlloc(keccak256(toBeHex(0)), [], [0, 1]);
 
     function adjcall(method: any, tx: Transaction): Promise<TransactionResponse> {
         return method(
@@ -170,15 +170,15 @@ describe("Adjudicator", function () {
 
     async function assertRegister(receipt: TransactionReceipt, channel: Channel): Promise<void> {
         assertEventEmitted(receipt, 'ChannelUpdate', channel, DisputePhase.DISPUTE);
-        await assertDisputePhase(channel.state.channelID[0], DisputePhase.DISPUTE);
+        await assertDisputePhase(channel.state.channelID, DisputePhase.DISPUTE);
     }
 
     async function assertProgress(receipt: TransactionReceipt, channel: Channel): Promise<void> {
         assertEventEmitted(receipt, 'ChannelUpdate', channel, DisputePhase.FORCEEXEC);
-        await assertDisputePhase(channel.state.channelID[0], DisputePhase.FORCEEXEC);
+        await assertDisputePhase(channel.state.channelID, DisputePhase.FORCEEXEC);
     }
     async function assertProgressLog(receipt: TransactionReceipt, channel: Channel): Promise<void> {
-        await assertDisputePhase(channel.state.channelID[0], DisputePhase.FORCEEXEC);
+        await assertDisputePhase(channel.state.channelID, DisputePhase.FORCEEXEC);
     }
 
     async function assertConclude(receipt: TransactionReceipt, channel: Channel, subchannels: Channel[], checkOutcome: boolean = true) {
@@ -188,13 +188,13 @@ describe("Adjudicator", function () {
         events should be emitted. */
         assertEventEmitted(receipt, 'ChannelUpdate', channel, DisputePhase.CONCLUDED);
 
-        await assertDisputePhase(channel.state.channelID[0], DisputePhase.CONCLUDED);
-        await Promise.all(subchannels.map(async channel => assertDisputePhase(channel.state.channelID[0], DisputePhase.CONCLUDED)));
+        await assertDisputePhase(channel.state.channelID, DisputePhase.CONCLUDED);
+        await Promise.all(subchannels.map(async channel => assertDisputePhase(channel.state.channelID, DisputePhase.CONCLUDED)));
 
         if (checkOutcome) {
             const expectedOutcome = accumulatedOutcome(channel, subchannels);
             await Promise.all(channel.params.participants.map(async (user, userIndex) => {
-                let fundingIDString = fundingID(channel.state.channelID[0], user.ethAddress)
+                let fundingIDString = fundingID(channel.state.channelID, user.ethAddress)
                 let outcome = await ah.holdings(fundingIDString);
                 expect(outcome).to.equal(expectedOutcome[userIndex], `outcome for user ${userIndex} not equal: got ${outcome}, expected ${expectedOutcome[userIndex]}`);
             }))
@@ -229,7 +229,7 @@ describe("Adjudicator", function () {
             const signer = await ethers.getSigner(parts[idx].ethAddress);
             const signerAddress = await signer.getAddress();
             const signerBalance = await ethers.provider.getBalance(signerAddress);
-            await depositWithAssertions(channelID[0], signerAddress, bal);
+            await depositWithAssertions(channelID, signerAddress, bal);
         });
     }
 
@@ -279,7 +279,7 @@ describe("Adjudicator", function () {
             backend = [1];
 
             params = new Params(appAddress, timeout, nonce, [parts[A], parts[B]], true);
-            channelID = [params.channelID()];
+            channelID = params.channelID();
 
         });
 
@@ -295,7 +295,7 @@ describe("Adjudicator", function () {
         const testsRegister = [
 
             {
-                prepare: async (tx: Transaction) => { tx.state.channelID = [keccak256(ethers.toUtf8Bytes("wrongChannelID"))]; await tx.sign(parts) },
+                prepare: async (tx: Transaction) => { tx.state.channelID = keccak256(ethers.toUtf8Bytes("wrongChannelID")); await tx.sign(parts) },
                 desc: "register with invalid channelID fails",
                 shouldRevert: true,
             },
@@ -401,7 +401,7 @@ describe("Adjudicator", function () {
                 .map(byte => byte.toString(16).padStart(2, '0')) // Convert each byte to hex
                 .join('');
             console.log("ChannelID: ", channelID);
-            const state = new State(["0x"+channelID, "0x"+channelID], "0", outcome, "0x"+app, false);
+            const state = new State("0x"+channelID, "0", outcome, "0x"+app, false);
             const tx = new Transaction(parts, balance, timeout, nonce, asset, backend, appAddress);
             tx.state = state;
             tx.params = params;
@@ -457,7 +457,7 @@ describe("Adjudicator", function () {
         const testsRefute = [
             {
                 prepare: async (tx: Transaction) => {
-                    tx.state.channelID = [ethers.keccak256(ethers.toUtf8Bytes("wrongChannelID"))];
+                    tx.state.channelID = ethers.keccak256(ethers.toUtf8Bytes("wrongChannelID"));
                     await tx.sign(parts);
                 },
                 desc: "refuting with invalid channelID fails",
@@ -530,7 +530,7 @@ describe("Adjudicator", function () {
                 let timeoutIndex = 0;
 
                 // Use ethers.js to call the disputes function
-                let timeoutBefore = (await adj.disputes(tx.state.channelID[0]))[timeoutIndex];
+                let timeoutBefore = (await adj.disputes(tx.state.channelID))[timeoutIndex];
 
                 if (test.shouldRevert) {
                     await expect(register(tx)).to.be.rejectedWith(Error);
@@ -548,7 +548,7 @@ describe("Adjudicator", function () {
                     await assertRegister(receipt, tx);
 
                     // Check timeout not changed
-                    let timeoutAfter = (await adj.disputes(tx.state.channelID[0]))[timeoutIndex];
+                    let timeoutAfter = (await adj.disputes(tx.state.channelID))[timeoutIndex];
                     expect(timeoutAfter).to.equal(timeoutBefore, "timeout must not change");
                 }
             });
@@ -562,7 +562,7 @@ describe("Adjudicator", function () {
         itWithBlockRevert("register with app fails", async () => {
             let tx = new Transaction(parts, balance, timeout, nonce, asset, backend, appAddress);
             tx.params.virtualChannel = true;
-            tx.state.channelID = [tx.params.channelID()];
+            tx.state.channelID = tx.params.channelID();
 
             await tx.sign(parts);
             const res = register(tx);
@@ -572,8 +572,8 @@ describe("Adjudicator", function () {
         itWithBlockRevert("register with locked funds fails", async () => {
             let tx = new Transaction(parts, balance, timeout, nonce, asset, backend, zeroAddress);
             tx.params.virtualChannel = true;
-            tx.state.channelID = [tx.params.channelID()];
-            tx.state.outcome.locked = [new SubAlloc([zeroBytes32], [], [])];
+            tx.state.channelID = tx.params.channelID();
+            tx.state.outcome.locked = [new SubAlloc(zeroBytes32, [], [])];
 
             await tx.sign(parts);
 
@@ -583,7 +583,7 @@ describe("Adjudicator", function () {
         itWithBlockRevert("register succeeds", async () => {
             let tx = new Transaction(parts, balance, timeout, nonce, asset, backend, zeroAddress);
             tx.params.virtualChannel = true;
-            tx.state.channelID = [tx.params.channelID()];
+            tx.state.channelID = tx.params.channelID();
             await tx.sign(parts);
 
             const res = await register(tx);
@@ -607,7 +607,7 @@ describe("Adjudicator", function () {
         const testsConcludeFinal = [
 
             {
-                prepare: async (tx: Transaction) => { tx.state.channelID = [ethers.keccak256(ethers.toUtf8Bytes("wrongChannelID"))]; await tx.sign(parts) },
+                prepare: async (tx: Transaction) => { tx.state.channelID = ethers.keccak256(ethers.toUtf8Bytes("wrongChannelID")); await tx.sign(parts) },
                 desc: "concludeFinal with invalid channelID fails",
                 shouldRevert: true,
                 revertReason: "invalid params",
@@ -710,7 +710,7 @@ describe("Adjudicator", function () {
                 ]],
                 []
             );
-            let state = new State([params.channelID()], version, outcome, "0x00", false);
+            let state = new State(params.channelID(), version, outcome, "0x00", false);
             return new Channel(params, state);
         }
         function createParentChannel(nonce: string, version: string, balances: BigNumberish[], subchannels: Channel[], ledger: boolean): Channel {
@@ -773,7 +773,7 @@ describe("Adjudicator", function () {
 
             const outcome = accumulatedOutcome(ledgerChannel, subchannels);
             await Promise.all(ledgerChannel.params.participants.map((user: Participant, userIndex: number) =>
-                depositWithAssertions(ledgerChannel.state.channelID[0], user.ethAddress, outcome[userIndex])))
+                depositWithAssertions(ledgerChannel.state.channelID, user.ethAddress, outcome[userIndex])))
         })
 
         it("register with wrong assets fails", async () => {
@@ -813,7 +813,7 @@ describe("Adjudicator", function () {
                 true,
             );
             newState.state.outcome.locked = ledgerChannel.state.outcome.locked.slice();
-            newState.state.outcome.locked[0] = new SubAlloc([zeroBytes32], [], []);
+            newState.state.outcome.locked[0] = new SubAlloc(zeroBytes32, [], []);
             const sigs = await newState.state.sign(parts);
             let res = progress(newState, ledgerChannel.state, 0, sigs[0]);
             await expect(res).to.be.revertedWith("SubAlloc: unequal ID");
@@ -840,7 +840,7 @@ describe("Adjudicator", function () {
                 if (receipt) {
                     expect(receipt.status).to.equal(1);
 
-                    const isSettled = await ah.settled(channelID[0]);
+                    const isSettled = await ah.settled(channelID);
                     expect(isSettled).to.be.false;
                 } else {
                     throw new Error("Progress transaction failed - receipt is null");
@@ -927,7 +927,7 @@ describe("Adjudicator", function () {
             {
                 prepare: async (tx: Transaction) => {
                     await advanceBlockTime(timeout + 10);
-                    tx.state.channelID = [keccak256("unknownChannelID")];
+                    tx.state.channelID = keccak256("unknownChannelID");
                     await tx.sign(parts);
                 },
                 desc: "advance past timeout; progress with unknown channelID fails",
@@ -937,7 +937,7 @@ describe("Adjudicator", function () {
             },
             {
                 prepare: async (tx: Transaction) => {
-                    tx.state.channelID = [differentChannelID];
+                    tx.state.channelID = differentChannelID;
                     await tx.sign(parts);
                 },
                 desc: "progress with different channelID fails",
@@ -1366,13 +1366,13 @@ describe("Adjudicator", function () {
             tx = prepareTransaction()
             txNoApp = prepareTransaction()
             txNoApp.params.app = zeroAddress
-            txNoApp.state.channelID = [txNoApp.params.channelID()]
+            txNoApp.state.channelID = txNoApp.params.channelID()
 
             // fund and register
             async function fund(channel: Channel) {
                 return Promise.all(channel.params.participants.map((user: Participant, userIndex: number) => {
                     const amount = channel.state.outcome.balances[assetIndex][userIndex]
-                    return depositWithAssertions(channel.state.channelID[0], user.ethAddress, amount)
+                    return depositWithAssertions(channel.state.channelID, user.ethAddress, amount)
                 }))
             }
             await fund(tx)
