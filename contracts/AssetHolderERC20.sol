@@ -1,4 +1,4 @@
-// Copyright 2024 - See NOTICE file for copyright holders.
+// Copyright 2025 - See NOTICE file for copyright holders.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,12 +46,12 @@ contract AssetHolderERC20 is AssetHolder {
 
 	/**
 	 * @notice Should not be called directly but only by the parent AssetHolder.
-	 * @dev Transferes `amount` tokens from `msg.sender` to `fundingID`.	
+	 * @dev Transferes `amount` tokens from `msg.sender` to `fundingID`.
  	 */
 	function depositEnact(bytes32, uint256 amount) internal override {
 		require(token.transferFrom(msg.sender, address(this), amount), "transferFrom failed");
 	}
-	
+
 	/**
    * @notice Should not be called directly but only by the parent AssetHolder.
    * @dev Withdraws tokens for channel participant authorization.participant

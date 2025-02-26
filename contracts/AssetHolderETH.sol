@@ -1,4 +1,4 @@
-// Copyright 2024 - See NOTICE file for copyright holders.
+// Copyright 2025 - See NOTICE file for copyright holders.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ contract AssetHolderETH is AssetHolder {
      * base asset holder contract.
      * @param _adjudicator Address of the adjudicator contract.
      */
-    constructor(address _adjudicator) AssetHolder(_adjudicator) 
+    constructor(address _adjudicator) AssetHolder(_adjudicator)
     {} // solhint-disable-line no-empty-blocks
 
     /**
