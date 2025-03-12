@@ -49,7 +49,7 @@ It is assumed to revert if any app-specific check fails.
 
 ## Testing
 The repository must be cloned recursively including [submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
-[Yarn](https://yarnpkg.com) is expected to be installed globally.
+[Yarn](https://yarnpkg.com) and [Hardhat](https://hardhat.org/hardhat-runner/docs/getting-started) are expected to be installed globally.
 To run the tests, run
 ```sh
 $ yarn
