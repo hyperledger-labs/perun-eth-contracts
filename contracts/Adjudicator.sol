@@ -1,4 +1,4 @@
-// Copyright 2019 - See NOTICE file for copyright holders.
+// Copyright 2025 - See NOTICE file for copyright holders.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,14 +14,12 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-pragma solidity ^0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.15;
+pragma abicoder v2;
 
-import "../vendor/openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
 import "./Channel.sol";
 import "./App.sol";
 import "./AssetHolder.sol";
-import "./SafeMath64.sol";
 import "./Array.sol";
 
 /**
@@ -30,8 +28,6 @@ import "./Array.sol";
  * @dev Adjudicator is the contract that decides on the current state of a statechannel.
  */
 contract Adjudicator {
-    using SafeMath for uint256;
-    using SafeMath64 for uint64;
 
     /**
      * @dev Our state machine has three phases.
@@ -39,15 +35,19 @@ contract Adjudicator {
      * In the FORCEEXEC phase, the smart contract is executed on-chain.
      * In the CONCLUDED phase, the channel is considered finalized.
      */
-    enum DisputePhase { DISPUTE, FORCEEXEC, CONCLUDED }
+    enum DisputePhase {
+        DISPUTE,
+        FORCEEXEC,
+        CONCLUDED
+    }
 
     struct Dispute {
         uint64 timeout;
         uint64 challengeDuration;
         uint64 version;
-        bool hasApp;
         uint8 phase;
         bytes32 stateHash;
+        bool hasApp;
     }
 
     /**
@@ -62,7 +62,12 @@ contract Adjudicator {
      * @param phase The dispute phase of the channel.
      * @param timeout The dispute phase timeout.
      */
-    event ChannelUpdate(bytes32 indexed channelID, uint64 version, uint8 phase, uint64 timeout);
+    event ChannelUpdate(
+        bytes32 indexed channelID,
+        uint64 version,
+        uint8 phase,
+        uint64 timeout
+    );
 
     // SignedState is a combination of params, state, and signatures.
     struct SignedState {
@@ -79,9 +84,7 @@ contract Adjudicator {
     function register(
         SignedState memory channel,
         SignedState[] memory subChannels
-    )
-    external
-    {
+    ) external {
         require(channel.params.ledgerChannel, "not ledger");
         registerRecursive(channel, subChannels, 0);
     }
@@ -98,10 +101,8 @@ contract Adjudicator {
     function registerRecursive(
         SignedState memory channel,
         SignedState[] memory subChannels,
-        uint startIndex)
-    internal
-    returns (uint256[] memory outcome, uint nextIndex)
-    {
+        uint startIndex
+    ) internal returns (uint256[] memory outcome, uint nextIndex) {
         nextIndex = startIndex;
         Channel.Allocation memory alloc = channel.state.outcome;
         Channel.Asset[] memory assets = alloc.assets;
@@ -113,15 +114,21 @@ contract Adjudicator {
         // For each sub-channel, register recursively and check the accumulated
         // outcome against the locked assets.
         Channel.SubAlloc[] memory locked = alloc.locked;
-        require(locked.length <= subChannels.length, "subChannels: too short");
-        for (uint s = 0; s < locked.length; s++) {
+        require(locked.length <= subChannels.length, "subChannels too short");
+        for (uint s = 0; s < locked.length; ++s) {
             SignedState memory _channel = subChannels[nextIndex++];
-            (Channel.SubAlloc memory subAlloc, Channel.State memory _state) =
-                (locked[s], _channel.state);
+            (Channel.SubAlloc memory subAlloc, Channel.State memory _state) = (
+                locked[s],
+                _channel.state
+            );
             require(subAlloc.ID == _state.channelID, "invalid sub-channel id");
 
             uint256[] memory _outcome;
-            (_outcome, nextIndex) = registerRecursive(_channel, subChannels, nextIndex);
+            (_outcome, nextIndex) = registerRecursive(
+                _channel,
+                subChannels,
+                nextIndex
+            );
 
             Channel.requireEqualAssetArray(assets, _state.outcome.assets);
             Array.requireEqualUint256Array(subAlloc.balances, _outcome);
@@ -134,20 +141,21 @@ contract Adjudicator {
      * (not registered before) or (newer version and within refutation period).
      * Registration is skipped if the channel state is already registered.
      */
-    function registerSingle(
-        SignedState memory channel
-    )
-    internal
-    {
-        (Channel.Params memory params, Channel.State memory state) = 
-            (channel.params, channel.state);
+    function registerSingle(SignedState memory channel) internal {
+        (Channel.Params memory params, Channel.State memory state) = (
+            channel.params,
+            channel.state
+        );
 
         requireValidParams(params, state);
         Channel.validateSignatures(params, state, channel.sigs);
 
         if (params.virtualChannel) {
             require(!Channel.hasApp(params), "cannot have app");
-            require(state.outcome.locked.length == 0, "cannot have locked funds");
+            require(
+                state.outcome.locked.length == 0,
+                "funds locked"
+            );
         }
 
         // If registered, require newer version and refutation timeout not passed.
@@ -159,9 +167,15 @@ contract Adjudicator {
                 return;
             }
             require(dispute.version < state.version, "invalid version");
-            require(dispute.phase == uint8(DisputePhase.DISPUTE), "incorrect phase");
+            require(
+                dispute.phase == uint8(DisputePhase.DISPUTE),
+                "incorrect phase"
+            );
             // solhint-disable-next-line not-rely-on-time
-            require(block.timestamp < dispute.timeout, "refutation timeout passed");
+            require(
+                block.timestamp < dispute.timeout,
+                "refutation timeout passed"
+            );
         }
 
         // Write state.
@@ -187,11 +201,10 @@ contract Adjudicator {
         Channel.State memory stateOld,
         Channel.State memory state,
         uint256 actorIdx,
-        bytes memory sig)
-    external
-    {
-        Dispute memory dispute = requireGetDispute(state.channelID);
-        if(dispute.phase == uint8(DisputePhase.DISPUTE)) {
+        bytes memory sig
+    ) external {
+        Dispute storage dispute = requireGetDispute(state.channelID);
+        if (dispute.phase == uint8(DisputePhase.DISPUTE)) {
             // solhint-disable-next-line not-rely-on-time
             require(block.timestamp >= dispute.timeout, "timeout not passed");
         } else if (dispute.phase == uint8(DisputePhase.FORCEEXEC)) {
@@ -205,7 +218,14 @@ contract Adjudicator {
         require(actorIdx < params.participants.length, "actorIdx out of range");
         requireValidParams(params, state);
         require(dispute.stateHash == hashState(stateOld), "wrong old state");
-        require(Sig.verify(Channel.encodeState(state), sig, params.participants[actorIdx]), "invalid signature");
+        require(
+            Sig.verify(
+                Channel.encodeState(state),
+                sig,
+                params.participants[actorIdx].ethAddress
+            ),
+            "invalid signature"
+        );
         requireValidTransition(params, stateOld, state, actorIdx);
 
         storeChallenge(params, state, DisputePhase.FORCEEXEC);
@@ -223,15 +243,23 @@ contract Adjudicator {
     function conclude(
         Channel.Params memory params,
         Channel.State memory state,
-        Channel.State[] memory subStates)
-    external
-    {
+        Channel.State[] memory subStates
+    ) external {
         require(params.ledgerChannel, "not ledger");
         requireValidParams(params, state);
-        
+
         concludeSingle(state);
-        (uint256[][] memory outcome,) = forceConcludeRecursive(state, subStates, 0);
-        pushOutcome(state.channelID, state.outcome.assets, params.participants, outcome);
+        (uint256[][] memory outcome, ) = forceConcludeRecursive(
+            state,
+            subStates,
+            0
+        );
+        pushOutcome(
+            state.channelID,
+            state.outcome.assets,
+            params.participants,
+            outcome
+        );
     }
 
     /**
@@ -249,23 +277,30 @@ contract Adjudicator {
     function concludeFinal(
         Channel.Params memory params,
         Channel.State memory state,
-        bytes[] memory sigs)
-    external
-    {
+        bytes[] memory sigs
+    ) external {
         require(params.ledgerChannel, "not ledger");
         require(state.isFinal == true, "state not final");
-        require(state.outcome.locked.length == 0, "cannot have sub-channels");
+        require(state.outcome.locked.length == 0, "has sub-channels");
         requireValidParams(params, state);
         Channel.validateSignatures(params, state, sigs);
 
         // If registered, require not concluded.
-        (Dispute memory dispute, bool registered) = getDispute(state.channelID);
+        (Dispute storage dispute, bool registered) = getDispute(state.channelID);
         if (registered) {
-            require(dispute.phase != uint8(DisputePhase.CONCLUDED), "channel already concluded");
+            require(
+                dispute.phase != uint8(DisputePhase.CONCLUDED),
+                "concluded already"
+            );
         }
 
         storeChallenge(params, state, DisputePhase.CONCLUDED);
-        pushOutcome(state.channelID, state.outcome.assets, params.participants, state.outcome.balances);
+        pushOutcome(
+            state.channelID,
+            state.outcome.assets,
+            params.participants,
+            state.outcome.balances
+        );
     }
 
     /**
@@ -273,7 +308,9 @@ contract Adjudicator {
      * @param params The parameters of the channel.
      * @return The ID of the channel.
      */
-    function channelID(Channel.Params memory params) public pure returns (bytes32) {
+    function channelID(
+        Channel.Params memory params
+    ) public pure returns (bytes32) {
         return keccak256(Channel.encodeParams(params));
     }
 
@@ -282,7 +319,9 @@ contract Adjudicator {
      * @param state The state to hash.
      * @return The hash of the state.
      */
-    function hashState(Channel.State memory state) public pure returns (bytes32) {
+    function hashState(
+        Channel.State memory state
+    ) public pure returns (bytes32) {
         return keccak256(Channel.encodeState(state));
     }
 
@@ -293,8 +332,8 @@ contract Adjudicator {
      */
     function requireValidParams(
         Channel.Params memory params,
-        Channel.State memory state)
-    internal pure {
+        Channel.State memory state
+    ) internal pure {
         require(state.channelID == channelID(params), "invalid params");
     }
 
@@ -308,11 +347,10 @@ contract Adjudicator {
     function storeChallenge(
         Channel.Params memory params,
         Channel.State memory state,
-        DisputePhase disputePhase)
-    internal
-    {
-        (Dispute memory dispute, bool registered) = getDispute(state.channelID);
-        
+        DisputePhase disputePhase
+    ) internal {
+        (Dispute storage dispute, bool registered) = getDispute(state.channelID);
+
         dispute.challengeDuration = uint64(params.challengeDuration);
         dispute.version = state.version;
         dispute.hasApp = Channel.hasApp(params);
@@ -324,10 +362,12 @@ contract Adjudicator {
             // Make channel concludable if state is final.
             // solhint-disable-next-line not-rely-on-time
             dispute.timeout = uint64(block.timestamp);
-        } else if (!registered || dispute.phase == uint8(DisputePhase.FORCEEXEC)) {
+        } else if (
+            !registered || dispute.phase == uint8(DisputePhase.FORCEEXEC)
+        ) {
             // Increment timeout if channel is not registered or in phase FORCEEXEC.
             // solhint-disable-next-line not-rely-on-time
-            dispute.timeout = uint64(block.timestamp).add(dispute.challengeDuration);
+            dispute.timeout = uint64(block.timestamp) + dispute.challengeDuration;
         }
 
         setDispute(state.channelID, dispute);
@@ -346,12 +386,18 @@ contract Adjudicator {
         Channel.Params memory params,
         Channel.State memory from,
         Channel.State memory to,
-        uint256 actorIdx)
-    internal pure
-    {
-        require(to.version == from.version + 1, "version must increment by one");
+        uint256 actorIdx
+    ) internal pure {
+        require(
+            to.version == from.version + 1,
+            "version must increment by one"
+        );
         require(from.isFinal == false, "cannot progress from final state");
-        requireAssetPreservation(from.outcome, to.outcome, params.participants.length);
+        requireAssetPreservation(
+            from.outcome,
+            to.outcome,
+            params.participants.length
+        );
         App app = App(params.app);
         app.validTransition(params, from, to, actorIdx);
     }
@@ -366,21 +412,32 @@ contract Adjudicator {
     function requireAssetPreservation(
         Channel.Allocation memory oldAlloc,
         Channel.Allocation memory newAlloc,
-        uint256 numParts)
-    internal pure
-    {
-        require(oldAlloc.balances.length == newAlloc.balances.length, "balances length mismatch");
-        require(oldAlloc.assets.length == newAlloc.assets.length, "assets length mismatch");
+        uint256 numParts
+    ) internal pure {
+        require(
+            oldAlloc.balances.length == newAlloc.balances.length,
+            "balances length mismatch"
+        );
+        require(
+            oldAlloc.assets.length == newAlloc.assets.length,
+            "assets length mismatch"
+        );
         Channel.requireEqualSubAllocArray(oldAlloc.locked, newAlloc.locked);
-        for (uint256 i = 0; i < newAlloc.assets.length; i++) {
+        for (uint256 i = 0; i < newAlloc.assets.length; ++i) {
             Channel.requireEqualAsset(oldAlloc.assets[i], newAlloc.assets[i]);
             uint256 sumOld = 0;
             uint256 sumNew = 0;
-            require(oldAlloc.balances[i].length == numParts, "old balances length mismatch");
-            require(newAlloc.balances[i].length == numParts, "new balances length mismatch");
-            for (uint256 k = 0; k < numParts; k++) {
-                sumOld = sumOld.add(oldAlloc.balances[i][k]);
-                sumNew = sumNew.add(newAlloc.balances[i][k]);
+            require(
+                oldAlloc.balances[i].length == numParts,
+                "old balances length mismatch"
+            );
+            require(
+                newAlloc.balances[i].length == numParts,
+                "new balances length mismatch"
+            );
+            for (uint256 k = 0; k < numParts; ++k) {
+                sumOld = sumOld + oldAlloc.balances[i][k];
+                sumNew = sumNew + newAlloc.balances[i][k];
             }
 
             require(sumOld == sumNew, "sum of balances mismatch");
@@ -392,14 +449,17 @@ contract Adjudicator {
      * Reverts if the channel is already concluded.
      */
     function concludeSingle(Channel.State memory state) internal {
-        Dispute memory dispute = requireGetDispute(state.channelID);
-        require(dispute.stateHash == hashState(state), "invalid channel state");
-        require(dispute.phase != uint8(DisputePhase.CONCLUDED), "channel already concluded");
+        Dispute storage dispute = requireGetDispute(state.channelID);
+        require(dispute.stateHash == hashState(state), "invalid state");
+        require(
+            dispute.phase != uint8(DisputePhase.CONCLUDED),
+            "already concluded"
+        );
 
         // If still in phase DISPUTE and the channel has an app, increase the
         // timeout by one duration to account for phase FORCEEXEC.
         if (dispute.phase == uint8(DisputePhase.DISPUTE) && dispute.hasApp) {
-            dispute.timeout = dispute.timeout.add(dispute.challengeDuration);
+            dispute.timeout = dispute.timeout + dispute.challengeDuration;
         }
         // solhint-disable-next-line not-rely-on-time
         require(block.timestamp >= dispute.timeout, "timeout not passed yet");
@@ -419,19 +479,17 @@ contract Adjudicator {
     function forceConcludeRecursive(
         Channel.State memory state,
         Channel.State[] memory subStates,
-        uint256 startIndex)
-    internal
-    returns (uint256[][] memory outcome, uint nextIndex)
-    {
+        uint256 startIndex
+    ) internal returns (uint256[][] memory outcome, uint nextIndex) {
         forceConcludeSingle(state);
 
         // Initialize with outcome of channel.
         Channel.Asset[] memory assets = state.outcome.assets;
         outcome = new uint256[][](assets.length);
-        for (uint a = 0; a < assets.length; a++) {
+        for (uint a = 0; a < assets.length; ++a) {
             uint256[] memory bals = state.outcome.balances[a];
             outcome[a] = new uint256[](bals.length);
-            for (uint p = 0; p < bals.length; p++) {
+            for (uint p = 0; p < bals.length; ++p) {
                 outcome[a][p] = state.outcome.balances[a][p];
             }
         }
@@ -439,21 +497,25 @@ contract Adjudicator {
         // Process sub-channels.
         nextIndex = startIndex;
         Channel.SubAlloc[] memory locked = state.outcome.locked;
-        for (uint256 i = 0; i < locked.length; i++) {
+        for (uint256 i = 0; i < locked.length; ++i) {
             Channel.SubAlloc memory subAlloc = locked[i];
             Channel.State memory subState = subStates[nextIndex++];
             require(subAlloc.ID == subState.channelID, "invalid subchannel id");
 
             uint256[][] memory subOutcome;
-            (subOutcome, nextIndex) = forceConcludeRecursive(subState, subStates, nextIndex);
+            (subOutcome, nextIndex) = forceConcludeRecursive(
+                subState,
+                subStates,
+                nextIndex
+            );
 
             // Add outcome of subchannels.
             uint16[] memory indexMap = subAlloc.indexMap;
-            for (uint a = 0; a < assets.length; a++) {                
-                for (uint p = 0; p < indexMap.length; p++) {
+            for (uint a = 0; a < assets.length; ++a) {
+                for (uint p = 0; p < indexMap.length; ++p) {
                     uint256 _subOutcome = subOutcome[a][p];
                     uint16 _p = indexMap[p];
-                    outcome[a][_p] = outcome[a][_p].add(_subOutcome);
+                    outcome[a][_p] = outcome[a][_p] + _subOutcome;
                 }
             }
         }
@@ -464,8 +526,8 @@ contract Adjudicator {
      * Reverts if the channel is not registered.
      */
     function forceConcludeSingle(Channel.State memory state) internal {
-        Dispute memory dispute = requireGetDispute(state.channelID);
-        require(dispute.stateHash == hashState(state), "invalid channel state");
+        Dispute storage dispute = requireGetDispute(state.channelID);
+        require(dispute.stateHash == hashState(state), "invalid state");
         if (dispute.phase != uint8(DisputePhase.CONCLUDED)) {
             dispute.phase = uint8(DisputePhase.CONCLUDED);
             setDispute(state.channelID, dispute);
@@ -478,15 +540,21 @@ contract Adjudicator {
     function pushOutcome(
         bytes32 channel,
         Channel.Asset[] memory assets,
-        address[] memory participants,
-        uint256[][] memory outcome)
-    internal
-    {
-        for (uint a = 0; a < assets.length; a++) {
+        Channel.Participant[] memory participants,
+        uint256[][] memory outcome
+    ) internal {
+        for (uint a = 0; a < assets.length; ++a) {
             Channel.Asset memory asset = assets[a];
             if (asset.chainID == block.chainid) {
-                //slither-disable-next-line calls-loop
-                AssetHolder(asset.holder).setOutcome(channel, participants, outcome[a]);
+                if (asset.ethHolder != address(0)) {
+                    // solhint-disable-next-line calls-loop
+                    AssetHolder(asset.ethHolder).setOutcome(
+                        channel,
+                        participants,
+                        outcome[a]
+                    );
+                }
+                // //slither-disable-next-line calls-loop
             }
         }
     }
@@ -495,19 +563,23 @@ contract Adjudicator {
      * @dev Returns the dispute state for the given channelID. The second return
      * value indicates whether the given channel has been registered yet.
      */
-    function getDispute(bytes32 chID) internal view returns (Dispute memory, bool) {
-        Dispute memory dispute = disputes[chID];
-        return (dispute, dispute.stateHash != bytes32(0));
+    function getDispute(
+        bytes32 chID
+    ) internal view returns (Dispute storage dispute, bool registered) {
+        dispute = disputes[chID];
+        registered = dispute.stateHash != bytes32(0);
     }
 
     /**
      * @dev Returns the dispute state for the given channelID. Reverts if the
      * channel has not been registered yet.
      */
-    function requireGetDispute(bytes32 chID) internal view returns (Dispute memory) {
-        (Dispute memory dispute, bool registered) = getDispute(chID);
+    function requireGetDispute(
+        bytes32 chID
+    ) internal view returns (Dispute storage dispute) {
+        bool registered;
+        (dispute, registered) = getDispute(chID);
         require(registered, "not registered");
-        return dispute;
     }
 
     /**
@@ -516,6 +588,11 @@ contract Adjudicator {
      */
     function setDispute(bytes32 chID, Dispute memory dispute) internal {
         disputes[chID] = dispute;
-        emit ChannelUpdate(chID, dispute.version, dispute.phase, dispute.timeout);
+        emit ChannelUpdate(
+            chID,
+            dispute.version,
+            dispute.phase,
+            dispute.timeout
+        );
     }
 }

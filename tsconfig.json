@@ -1,23 +1,28 @@
 {
   "compilerOptions": {
-    "target": "es2017",
+    "target": "es2020",
     "module": "commonjs",
-    "strict": true,
-    "moduleResolution": "node",
-    "noImplicitThis": true,
-    "alwaysStrict": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["es2017", "esnext.asynciterable"],
-    "sourceMap": true,
-    "rootDir": "src",
-    "outDir": "build",
-    "typeRoots": ["./node_modules", "./node_modules/@types", "./types"],
-    "types": ["node", "chai", "mocha", "bn.js", "web3", "truffle-typings", "truffle-contracts"]
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": [
+      "node",
+      "mocha",
+      "chai"
+    ],
+    "typeRoots": [
+      "./node_modules/@types"
+    ]
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "build", "node_modules/*"]
+  "include": [
+    "./test",
+    "./typechain-types",
+    "./hardhat.config.ts",
+    ".skipfiles/Lock.skip.ts"
+  ],
+  "files": [
+    "./hardhat.config.ts"
+  ]
 }

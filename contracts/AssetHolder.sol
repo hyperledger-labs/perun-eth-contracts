@@ -1,4 +1,4 @@
-// Copyright 2019 - See NOTICE file for copyright holders.
+// Copyright 2025 - See NOTICE file for copyright holders.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-pragma solidity ^0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.15;
+pragma abicoder v2;
 
-import "../vendor/openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
 import "./Sig.sol";
+import "./Channel.sol";
 
 /**
  * @title The Perun AssetHolder
@@ -26,21 +26,24 @@ import "./Sig.sol";
  * Perun state channel.
  */
 abstract contract AssetHolder {
-    using SafeMath for uint256;
 
     /**
      * @dev WithdrawalAuth authorizes an on-chain public key to withdraw from an ephemeral key.
      */
     struct WithdrawalAuth {
         bytes32 channelID;
-        address participant; // The account used to sign the authorization which is debited.
+        Channel.Participant participant; // The account used to sign the authorization which is debited.
         address payable receiver; // The receiver of the authorization.
         uint256 amount; // The amount that can be withdrawn.
     }
 
     event OutcomeSet(bytes32 indexed channelID);
     event Deposited(bytes32 indexed fundingID, uint256 amount);
-    event Withdrawn(bytes32 indexed fundingID, uint256 amount, address receiver);
+    event Withdrawn(
+        bytes32 indexed fundingID,
+        uint256 amount,
+        address receiver
+    );
 
     /**
      * @notice This mapping stores the balances of participants to their fundingID.
@@ -63,8 +66,11 @@ abstract contract AssetHolder {
     /**
      * @notice The onlyAdjudicator modifier specifies functions that can only be called from the adjudicator contract.
      */
-    modifier onlyAdjudicator {
-        require(msg.sender == adjudicator, "can only be called by the adjudicator"); // solhint-disable-line reason-string
+    modifier onlyAdjudicator() {
+        require(
+            msg.sender == adjudicator,
+            "can only be called by the adjudicator"
+        ); // solhint-disable-line reason-string
         _;
     }
 
@@ -85,11 +91,17 @@ abstract contract AssetHolder {
      */
     function setOutcome(
         bytes32 channelID,
-        address[] calldata parts,
-        uint256[] calldata newBals)
-    external onlyAdjudicator {
-        require(parts.length == newBals.length, "participants length should equal balances"); // solhint-disable-line reason-string
-        require(settled[channelID] == false, "trying to set already settled channel"); // solhint-disable-line reason-string
+        Channel.Participant[] calldata parts,
+        uint256[] calldata newBals
+    ) external onlyAdjudicator {
+        require(
+            parts.length == newBals.length,
+            "participants length should equal balances"
+        ); // solhint-disable-line reason-string
+        require(
+            settled[channelID] == false,
+            "trying to set already settled channel"
+        ); // solhint-disable-line reason-string
 
         // The channelID itself might already be funded
         uint256 sumHeld = holdings[channelID];
@@ -97,19 +109,19 @@ abstract contract AssetHolder {
         uint256 sumOutcome = 0;
 
         bytes32[] memory fundingIDs = new bytes32[](parts.length);
-        for (uint256 i = 0; i < parts.length; i++) {
-            bytes32 id = calcFundingID(channelID, parts[i]);
+        for (uint256 i = 0; i < parts.length; ++i) {
+            bytes32 id = calcFundingID(channelID, parts[i].ethAddress);
             // Save calculated ids to save gas.
             fundingIDs[i] = id;
             // Compute old balances.
-            sumHeld = sumHeld.add(holdings[id]);
+            sumHeld = sumHeld + holdings[id];
             // Compute new balances.
-            sumOutcome = sumOutcome.add(newBals[i]);
+            sumOutcome = sumOutcome + newBals[i];
         }
 
         // We allow overfunding channels, who overfunds looses their funds.
         if (sumHeld >= sumOutcome) {
-            for (uint256 i = 0; i < parts.length; i++) {
+            for (uint256 i = 0; i < parts.length; ++i) {
                 holdings[fundingIDs[i]] = newBals[i];
             }
         }
@@ -132,8 +144,8 @@ abstract contract AssetHolder {
      */
     function deposit(bytes32 fundingID, uint256 amount) external payable {
         depositCheck(fundingID, amount);
-        holdings[fundingID] = holdings[fundingID].add(amount);
-        depositEnact(fundingID, amount);       
+        holdings[fundingID] = holdings[fundingID] + amount;
+        depositEnact(fundingID, amount);
         emit Deposited(fundingID, amount);
     }
 
@@ -153,13 +165,26 @@ abstract contract AssetHolder {
      * what amounf of asset from which channel participant.
      * @param signature Signature on the withdrawal authorization.
      */
-    function withdraw(WithdrawalAuth calldata authorization, bytes calldata signature) external {
+    function withdraw(
+        WithdrawalAuth calldata authorization,
+        bytes calldata signature
+    ) external {
         require(settled[authorization.channelID], "channel not settled");
-        require(Sig.verify(abi.encode(authorization), signature, authorization.participant), "signature verification failed");
-        bytes32 id = calcFundingID(authorization.channelID, authorization.participant);
+        require(
+            Sig.verify(
+                abi.encode(authorization),
+                signature,
+                authorization.participant.ethAddress
+            ),
+            "signature verification failed"
+        );
+        bytes32 id = calcFundingID(
+            authorization.channelID,
+            authorization.participant.ethAddress
+        );
         require(holdings[id] >= authorization.amount, "insufficient funds");
         withdrawCheck(authorization, signature);
-        holdings[id] = holdings[id].sub(authorization.amount);
+        holdings[id] = holdings[id] - authorization.amount;
         withdrawEnact(authorization, signature);
         emit Withdrawn(id, authorization.amount, authorization.receiver);
     }
@@ -172,8 +197,10 @@ abstract contract AssetHolder {
      * call it via `super`.
      */
     //slither-disable-next-line dead-code
-    function depositCheck(bytes32 fundingID, uint256 amount) internal view virtual
-    {} // solhint-disable no-empty-blocks
+    function depositCheck(
+        bytes32 fundingID,
+        uint256 amount
+    ) internal view virtual {} // solhint-disable no-empty-blocks
 
     /**
      * @notice Enacts a deposit or reverts otherwise.
@@ -182,8 +209,7 @@ abstract contract AssetHolder {
      * This function is empty by default and the overrider does not need to
      * call it via `super`.
      */
-    function depositEnact(bytes32 fundingID, uint256 amount) internal virtual
-    {} // solhint-disable no-empty-blocks
+    function depositEnact(bytes32 fundingID, uint256 amount) internal virtual {} // solhint-disable no-empty-blocks
 
     /**
      * @notice Checks a withdrawal for validity and reverts otherwise.
@@ -192,8 +218,10 @@ abstract contract AssetHolder {
      * This function is empty by default and the overrider does not need to
      * call it via `super`.
      */
-    function withdrawCheck(WithdrawalAuth calldata authorization, bytes calldata signature) internal view virtual
-    {} // solhint-disable no-empty-blocks
+    function withdrawCheck(
+        WithdrawalAuth calldata authorization,
+        bytes calldata signature
+    ) internal view virtual {} // solhint-disable no-empty-blocks
 
     /**
      * @notice Enacts a withdrawal or reverts otherwise.
@@ -203,16 +231,21 @@ abstract contract AssetHolder {
      * call it via `super`.
      */
     //slither-disable-next-line dead-code
-    function withdrawEnact(WithdrawalAuth calldata authorization, bytes calldata signature) internal virtual
-    {} // solhint-disable no-empty-blocks
+    function withdrawEnact(
+        WithdrawalAuth calldata authorization,
+        bytes calldata signature
+    ) internal virtual {} // solhint-disable no-empty-blocks
 
     /**
      * @notice Internal helper function that calculates the fundingID.
      * @param channelID ID of the channel.
-     * @param participant Address of a participant in the channel.
+     * @param ethAddress Ethereum address of a participant in the channel.
      * @return The funding ID, an identifier used for indexing.
      */
-    function calcFundingID(bytes32 channelID, address participant) internal pure returns (bytes32) {
-        return keccak256(abi.encode(channelID, participant));
+    function calcFundingID(
+        bytes32 channelID,
+        address ethAddress
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(channelID, ethAddress));
     }
 }

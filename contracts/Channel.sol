@@ -1,4 +1,4 @@
-// Copyright 2019 - See NOTICE file for copyright holders.
+// Copyright 2025 - See NOTICE file for copyright holders.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-pragma solidity ^0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.15;
+pragma abicoder v2;
 
 import "./Sig.sol";
 import "./Array.sol";
@@ -24,10 +24,15 @@ library Channel {
     struct Params {
         uint256 challengeDuration;
         uint256 nonce;
-        address[] participants;
+        Participant[] participants;
         address app;
         bool ledgerChannel;
         bool virtualChannel;
+    }
+
+    struct Participant {
+        address ethAddress;
+        bytes ccAddress;
     }
 
     struct State {
@@ -40,11 +45,13 @@ library Channel {
 
     struct Asset {
         uint256 chainID;
-        address holder;
+        address ethHolder;
+        bytes ccHolder;
     }
 
     struct Allocation {
         Asset[] assets;
+        uint256[] backends;
         // Outer dimension are assets, inner dimension are the participants.
         uint256[][] balances;
         SubAlloc[] locked;
@@ -71,21 +78,34 @@ library Channel {
     function validateSignatures(
         Params memory params,
         State memory state,
-        bytes[] memory sigs)
-    internal pure
-    {
+        bytes[] memory sigs
+    ) internal pure {
         bytes memory encodedState = encodeState(state);
-        require(params.participants.length == sigs.length, "signatures length mismatch");
-        for (uint256 i = 0; i < sigs.length; i++) {
-            require(Sig.verify(encodedState, sigs[i], params.participants[i]), "invalid signature");
+        require(
+            params.participants.length == sigs.length,
+            "signatures length mismatch"
+        );
+        for (uint256 i = 0; i < sigs.length; ++i) {
+            require(
+                Sig.verify(
+                    encodedState,
+                    sigs[i],
+                    params.participants[i].ethAddress
+                ),
+                "invalid signature"
+            );
         }
     }
 
-    function encodeParams(Params memory params) internal pure returns (bytes memory)  {
+    function encodeParams(
+        Params memory params
+    ) internal pure returns (bytes memory) {
         return abi.encode(params);
     }
 
-    function encodeState(State memory state) internal pure returns (bytes memory)  {
+    function encodeState(
+        State memory state
+    ) internal pure returns (bytes memory) {
         return abi.encode(state);
     }
 
@@ -93,11 +113,9 @@ library Channel {
     function requireEqualSubAllocArray(
         SubAlloc[] memory a,
         SubAlloc[] memory b
-    )
-    internal pure
-    {
+    ) internal pure {
         require(a.length == b.length, "SubAlloc[]: unequal length");
-        for (uint i = 0; i < a.length; i++) {
+        for (uint i = 0; i < a.length; ++i) {
             requireEqualSubAlloc(a[i], b[i]);
         }
     }
@@ -106,34 +124,29 @@ library Channel {
     function requireEqualSubAlloc(
         SubAlloc memory a,
         SubAlloc memory b
-    )
-    internal pure
-    {
+    ) internal pure {
         require(a.ID == b.ID, "SubAlloc: unequal ID");
         Array.requireEqualUint256Array(a.balances, b.balances);
         Array.requireEqualUint16Array(a.indexMap, b.indexMap);
     }
 
     /// @dev Asserts that a and b are equal.
-    function requireEqualAsset(
-        Asset memory a,
-        Asset memory b
-    )
-    internal pure
-    {
-        require(a.chainID == b.chainID, "Asset: unequal chainID");
-        require(a.holder == b.holder, "Asset: unequal holder");
+    function requireEqualAsset(Asset memory a, Asset memory b) internal pure {
+        require(a.chainID == b.chainID, "unequal chainID");
+        require(a.ethHolder == b.ethHolder, "unequal ethHolder");
+        require(
+            keccak256(a.ccHolder) == keccak256(b.ccHolder),
+            "unequal ccHolder"
+        );
     }
 
     /// @dev Asserts that a and b are equal.
     function requireEqualAssetArray(
         Channel.Asset[] memory a,
         Channel.Asset[] memory b
-    )
-    internal pure
-    {
+    ) internal pure {
         require(a.length == b.length, "Asset[]: unequal length");
-        for (uint i = 0; i < a.length; i++) {
+        for (uint i = 0; i < a.length; ++i) {
             requireEqualAsset(a[i], b[i]);
         }
     }
@@ -141,5 +154,5 @@ library Channel {
     /// @dev Returns whether the channel has an app.
     function hasApp(Params memory params) internal pure returns (bool) {
         return params.app != address(0);
-    } 
+    }
 }

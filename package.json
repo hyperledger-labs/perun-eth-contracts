@@ -1,40 +1,55 @@
 {
   "devDependencies": {
-    "@types/bn.js": "^4.11.4",
-    "@types/chai": "^4.1.7",
-    "@types/mocha": "^5.2.5",
-    "@types/node": "^10.12.19",
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
+    "@nomicfoundation/hardhat-ethers": "^3.0.6",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-ignition-ethers": "^0.15.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
+    "hardhat-gas-reporter": "^1.0.8",
+    "@nomicfoundation/hardhat-ignition": "^0.15.5",
+    "@nomicfoundation/ignition-core": "^0.15.5",
+    "@types/bn.js": "^5.1.6",
+    "@types/chai": "^4.2.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.10.1",
     "bn.js": "^5.2.1",
     "chai": "^4.2.0",
-    "openzeppelin-solidity": "^2.1.2",
-    "solhint": "^3.3.2",
-    "truffle": "5.5.18",
-    "truffle-assertions": "^0.7.2",
-    "typechain": "^0.3.11",
-    "typescript": "^4.2.2",
-    "web3": "^1.2.6"
+    "ethers": "^6.13.4",
+    "hardhat": "^2.22.6",
+    "openzeppelin-solidity": "4.8.1",
+    "solhint": "^5.0.3",
+    "ts-node": "^10.9.2",
+    "typechain": "^8.3.2",
+    "typescript": "^5.7.2"
   },
   "scripts": {
-    "clean": "rm -rf ./build/",
-    "build:contracts": "truffle compile",
-    "build:types": "typechain --target truffle './build/**/*.json'",
-    "fix:truffle-typings": "sed -i.bak -e 's/= import(\"web3\")/= typeof import(\"web3\")/' node_modules/truffle-typings/index.d.ts",
-    "postbuild:types": "sed -i.bak -e 's/BigNumber/BN/g' -e '/bignumber\\.js/d' types/truffle-contracts/index.d.ts",
-    "build:js": "tsc -p .",
-    "build": "yarn build:contracts && yarn build:types && yarn fix:truffle-typings && yarn build:js",
-    "test": "truffle test"
+    "clean": "rm -rf ./build/ && rm -rf ./cache/ && rm -rf ./artifacts/ && rm -rf ./typechain-types/",
+    "build": "hardhat compile",
+    "test": "hardhat test"
   },
   "dependencies": {
+    "@nomicfoundation/hardhat-ignition-ethers": "^0.15.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
     "eth-gas-reporter": "^0.2.19",
-    "solidity-coverage": "^0.7.0",
+    "hardhat-gas-reporter": "^1.0.8",
+    "solidity-coverage": "^0.8.1",
     "truffle-error": "^0.0.5",
     "truffle-typings": "^1.0.8",
-    "web3-eth": "^1.2.6",
-    "web3-utils": "^1.2.6"
+    "web3-eth": "^4.11.0",
+    "web3-utils": "^4.3.2"
   },
   "version": "0.0.0",
   "os": [
     "linux",
     "darwin"
-  ]
+  ],
+  "name": "perun-eth-contracts",
+  "main": "index.js",
+  "repository": "https://github.com/hyperledger-labs/perun-eth-contracts.git",
+  "author": "Ilja von Hoessle <ilja@perun.network>",
+  "license": "MIT"
 }

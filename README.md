@@ -11,6 +11,7 @@
 </p>
 
 This repository contains the Ethereum smart contracts for [go-perun](https://github.com/hyperledger-labs/go-perun)'s Ethereum backend.
+Additionally, it allows cross-chain swaps with the Stellar blockchain. It supports our [Soroban Contract](https://github.com/perun-network/perun-soroban-contract), utilizing EVM-compatible cryptography and encoding. Channel participants can have multiple addresses in the channel.
 
 ## Security Disclaimer
 The smart contracts presented in this directory are under active development and are not ready for production use.
@@ -49,7 +50,7 @@ It is assumed to revert if any app-specific check fails.
 
 ## Testing
 The repository must be cloned recursively including [submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
-[Yarn](https://yarnpkg.com) is expected to be installed globally.
+[Yarn](https://yarnpkg.com) and [Hardhat](https://hardhat.org/hardhat-runner/docs/getting-started) are expected to be installed globally.
 To run the tests, run
 ```sh
 $ yarn
@@ -58,7 +59,7 @@ $ yarn test
 ```
 
 ## Copyright
-Copyright 2021 - See [NOTICE](NOTICE) file for copyright holders.
+Copyright 2025 - See [NOTICE](NOTICE) file for copyright holders.
 Use of the source code is governed by the Apache 2.0 license that can be found in the [LICENSE file](LICENSE).
 
 Contact us at [info@perun.network](mailto:info@perun.network).

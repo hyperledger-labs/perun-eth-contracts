@@ -1,4 +1,4 @@
-// Copyright 2020 - See NOTICE file for copyright holders.
+// Copyright 2025 - See NOTICE file for copyright holders.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,46 +12,76 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// <reference types="truffle-typings" />
+import { ethers } from "hardhat";
 
-import {promisify} from "util";
-import Web3 from "web3";
+import { Signer, BigNumberish, parseEther, formatEther, keccak256, getBytes } from "ethers";
 
-declare const web3: Web3;
+export async function sign(data: string, account: string): Promise<string> {
+  const provider = ethers.provider;
+  const signer = await provider.getSigner(account);
 
-export async function sign(data: string, account: string) {
-  let sig = await web3.eth.sign(web3.utils.soliditySha3(data) as string, account);
-  // Update v value (add 27), if not done by web3.
-  let v = parseInt(sig.slice(130, 132), 16);
+  // Hash the data using keccak256
+  const messageHash = keccak256(data);
+
+  // Convert hash to bytes
+  const messageHashBytes = getBytes(messageHash);
+  const signature = await signer.signMessage(messageHashBytes);
+
+  // Split the signature
+  const sig = ethers.Signature.from(signature);
+
+  // Combine r, s, and v
+  let combinedSig = sig.r + sig.s.slice(2) + (sig.v).toString(16).padStart(2, '0');
+
+  // Ensure v is 27 or 28
+  let v = parseInt(combinedSig.slice(130, 132), 16);
   if (v < 27) {
     v += 27;
   }
-  return sig.slice(0, 130) + v.toString(16);
+
+  return combinedSig.slice(0, 130) + v.toString(16).padStart(2, '0');
 }
 
-export function ether(x: number): BN { return web3.utils.toWei(web3.utils.toBN(x), "ether"); }
 
-export function wei2eth(x: BN): BN { return web3.utils.toBN(web3.utils.fromWei(x.toString(), "ether")); }
-
-export function hash(...val: any[]): string {
-  return web3.utils.soliditySha3(...val) as string
+export function ether(x: number | string): BigNumberish {
+  return parseEther(x.toString());
 }
 
-export async function asyncWeb3Send(method: string, params: any[], id?: number): Promise<any> {
-  let req: any = { jsonrpc: '2.0', method: method, params: params };
-  if (id != undefined) req.id = id;
-
-  return promisify((callback) => {
-    (web3.currentProvider as any).send(req, callback)
-  })();
+export function wei2eth(x: BigNumberish): string {
+  return formatEther(x);
 }
+
+export async function getAddresses(signers: Signer[]): Promise<string[]> {
+  return Promise.all(signers.map(signer => signer.getAddress()));
+}
+
+
+export async function asyncWeb3Send(method: string, params: any[]): Promise<any> {
+  const provider = ethers.provider;
+
+  try {
+    const result = await provider.send(method, params);
+    return result;
+  } catch (error) {
+    console.error("Error sending request in asyncWeb3Send:", error);
+    throw error;
+  }
+}
+
 
 export async function currentTimestamp(): Promise<number> {
-  let blocknumber = await web3.eth.getBlockNumber();
-  let block = await web3.eth.getBlock(blocknumber);
-  return block.timestamp as number;
+  const blockNumber = await ethers.provider.getBlockNumber();
+  const block = await ethers.provider.getBlock(blockNumber);
+
+  if (!block) {
+    throw new Error("Failed to get the block");
+  }
+
+  return Number(block.timestamp);
 }
 
 export async function getChainID(): Promise<number> {
-  return await web3.eth.getChainId();
+  const network = await ethers.provider.getNetwork();
+
+  return Number(network.chainId);
 }

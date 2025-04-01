@@ -1,4 +1,4 @@
-// Copyright 2019 - See NOTICE file for copyright holders.
+// Copyright 2025 - See NOTICE file for copyright holders.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// <reference types="truffle-typings" />
-import Web3 from "web3";
-declare const web3: Web3;
-import { hash, asyncWeb3Send } from "./web3";
+
+import { asyncWeb3Send } from "./web3";
+import { ethers } from "hardhat";
+import { AbiCoder, keccak256 } from "ethers";
 
 export function sleep(milliseconds: any) {
   return new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -27,10 +27,15 @@ export async function advanceBlockTime(time: number): Promise<any> {
 }
 
 export function fundingID(channelID: string, participant: string): string {
-  return hash(web3.eth.abi.encodeParameters(
+  const paddedChannelID = ethers.zeroPadValue(channelID, 32);
+
+  const abiCoder = AbiCoder.defaultAbiCoder();
+  const encoded = abiCoder.encode(
     ['bytes32', 'address'],
-    [web3.utils.rightPad(channelID, 64, "0"),
-      participant]));
+    [paddedChannelID, participant]
+  );
+
+  return keccak256(encoded);
 }
 
 // describe test suite followed by blockchain revert
@@ -39,22 +44,27 @@ export function describeWithBlockRevert(name: string, tests: any) {
     let snapshot_id: number;
 
     before("take snapshot before first test", async () => {
-      snapshot_id = (await asyncWeb3Send('evm_snapshot', [])).result;
+      const result = (await asyncWeb3Send('evm_snapshot', []));
+      snapshot_id = result;
     });
 
     after("restore snapshot after last test", async () => {
-      return asyncWeb3Send('evm_revert', [snapshot_id]);
+      await asyncWeb3Send('evm_revert', [snapshot_id]);
     });
 
     tests();
   });
 }
 
-// it test followed by blockchain revert
 export function itWithBlockRevert(name: string, test: any) {
   it(name, async () => {
-    let snapshot_id = (await asyncWeb3Send('evm_snapshot', [])).result;
-    await test();
-    await asyncWeb3Send('evm_revert', [snapshot_id]);
+    const result = (await asyncWeb3Send('evm_snapshot', []));
+    const snapshot_id = result;
+
+    try {
+      await test();
+    } finally {
+      await asyncWeb3Send('evm_revert', [snapshot_id]);
+    }
   });
 }
