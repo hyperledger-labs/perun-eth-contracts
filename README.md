@@ -11,6 +11,7 @@
 </p>
 
 This repository contains the Ethereum smart contracts for [go-perun](https://github.com/hyperledger-labs/go-perun)'s Ethereum backend.
+Additionally, it allows cross-contract swaps with the [Soroban Contract](https://github.com/perun-network/perun-soroban-contract) by allowing multiple addresses per participant in the channel.
 
 ## Security Disclaimer
 The smart contracts presented in this directory are under active development and are not ready for production use.
