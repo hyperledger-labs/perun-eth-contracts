@@ -4,11 +4,11 @@ All notable changes to this project will be documented in this file.
 ## [1.0.0] Rubicon - 2025-04-01 [:boom:]
 ### Added
 
-* Multi-ledger functionality to support multiple chains [#29]
+* Multi-ledger functionality to support multiple EVM chains [#29]
 
-* Compatibility with cross-contract channels [#40]
+* Support for non-EVM cross-chain channels [#40]
 
-* Rewrite for efficiency (change channelID array to singular channelID) [#41]
+* Optimization (change channelID array to singular channelID)  [#41]
 
 [#29]:(https://github.com/hyperledger-labs/perun-eth-contracts/pull/29)
 [#40]:(https://github.com/hyperledger-labs/perun-eth-contracts/pull/40)
