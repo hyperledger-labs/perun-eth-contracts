@@ -228,7 +228,11 @@ contract Adjudicator {
         );
         requireValidTransition(params, stateOld, state, actorIdx);
 
-        storeChallenge(params, state, DisputePhase.FORCEEXEC);
+        DisputePhase phase = DisputePhase.FORCEEXEC;
+        if (state.isFinal) {
+            phase = DisputePhase.CONCLUDED;
+        }
+        storeChallenge(params, state, phase);
     }
 
     /**
